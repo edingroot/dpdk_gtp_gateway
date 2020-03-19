@@ -30,9 +30,9 @@ static int pktDecode_Handler(void *arg)
 
     struct rte_mbuf *ptr[MAX_RX_BURST_COUNT], *m = NULL;
 
-    struct ether_hdr *ethHdr = NULL;
-    struct ipv4_hdr  *ipHdr  = NULL;
-    struct udp_hdr   *udpHdr = NULL;
+    struct rte_ether_hdr *ethHdr = NULL;
+    struct rte_ipv4_hdr  *ipHdr  = NULL;
+    struct rte_udp_hdr   *udpHdr = NULL;
 
     gtpv1_t *gtp1Hdr    = NULL;
     gtpv2_t *gtp2Hdr    = NULL;
@@ -44,7 +44,7 @@ static int pktDecode_Handler(void *arg)
     gtp_v2_withTeid_t *gtp2TeidHdr = NULL;
     gtp_v2_noTeid_t   *gtp2NoTeidHdr = NULL;
 #endif
-    struct ipv4_hdr *ipUeHdr = NULL;
+    struct rte_ipv4_hdr *ipUeHdr = NULL;
 
     userInfo_t *usrData = NULL;
 
@@ -79,7 +79,7 @@ static int pktDecode_Handler(void *arg)
                 m = ptr[j];
                 rte_prefetch0(rte_pktmbuf_mtod(ptr[j + PREFETCH_OFFSET], void *));
 
-                ethHdr = rte_pktmbuf_mtod(m, struct ether_hdr*);
+                ethHdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr*);
 
                 /* check for IPv4 */
                 //printf("\n ether type : %x\n", ethHdr->ether_type);
@@ -91,7 +91,7 @@ static int pktDecode_Handler(void *arg)
                         ethHdr->d_addr.addr_bytes[4], ethHdr->d_addr.addr_bytes[5],
                         m->port);
 */
-                    ipHdr = (struct ipv4_hdr *) ((char *)(ethHdr + 1));
+                    ipHdr = (struct rte_ipv4_hdr *) ((char *)(ethHdr + 1));
 
                     /* check IP is fragmented */
                     if (unlikely(ipHdr->fragment_offset & 0xfffc)) {
@@ -103,7 +103,7 @@ static int pktDecode_Handler(void *arg)
                     /* check for UDP */
                     //printf("\n protocol: %x\n", ipHdr->next_proto_id);
                     if (likely(ipHdr->next_proto_id == 0x11)) {
-                        udpHdr = (struct udp_hdr *) ((char *) (ipHdr+1));
+                        udpHdr = (struct rte_udp_hdr *) ((char *) (ipHdr+1));
                         //printf("\n Port src: %x dst: %x\n", udpHdr->src_port, udpHdr->dst_port);
 
                         /* GTPC LTE carries V2 only 2123*/
@@ -436,7 +436,7 @@ static int pktDecode_Handler(void *arg)
                             }
 
                             //usrData->seqNum = (rte_be_to_cpu_32(seq->seqNumSpare) >> 8);
-                            ipUeHdr = (struct ipv4_hdr *) (((char *)(seq + 1)));
+                            ipUeHdr = (struct rte_ipv4_hdr *) (((char *)(seq + 1)));
 
                             if (unlikely(ipUeHdr->version_ihl & 0x40) != 0x40) {
                               prtPktStats[port].rx_gptu_ipv6 += 1;
@@ -471,7 +471,7 @@ static int pktDecode_Handler(void *arg)
             {
                 m = ptr[j];
 
-                ethHdr = rte_pktmbuf_mtod(m, struct ether_hdr*);
+                ethHdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr*);
 
                 /* check for IPv4 */
                 //printf("\n ether type : %x\n", ethHdr->ether_type);
@@ -483,7 +483,7 @@ static int pktDecode_Handler(void *arg)
                         ethHdr->d_addr.addr_bytes[4], ethHdr->d_addr.addr_bytes[5],
                         m->port);
 */
-                    ipHdr = (struct ipv4_hdr *) ((char *)(ethHdr + 1));
+                    ipHdr = (struct rte_ipv4_hdr *) ((char *)(ethHdr + 1));
 
                     /* check IP is fragmented */
                     if (unlikely(ipHdr->fragment_offset & 0xfffc)) {
@@ -495,7 +495,7 @@ static int pktDecode_Handler(void *arg)
                     /* check for UDP */
                     //printf("\n protocol: %x\n", ipHdr->next_proto_id);
                     if (likely(ipHdr->next_proto_id == 0x11)) {
-                        udpHdr = (struct udp_hdr *) ((char *) (ipHdr+1));
+                        udpHdr = (struct rte_udp_hdr *) ((char *) (ipHdr+1));
                         //printf("\n Port src: %x dst: %x\n", udpHdr->src_port, udpHdr->dst_port);
 
                         /* GTPC LTE carries V2 only 2123*/
@@ -829,7 +829,7 @@ static int pktDecode_Handler(void *arg)
                             }
 
                             //usrData->seqNum = (rte_be_to_cpu_32(seq->seqNumSpare) >> 8);
-                            ipUeHdr = (struct ipv4_hdr *) (((char *)(seq + 1)));
+                            ipUeHdr = (struct rte_ipv4_hdr *) (((char *)(seq + 1)));
 
                             if (unlikely(ipUeHdr->version_ihl & 0x40) != 0x40) {
                               prtPktStats[port].rx_gptu_ipv6 += 1;

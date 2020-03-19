@@ -14,7 +14,7 @@ extern numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
 
 void sigExtraStats(__attribute__((unused)) int signo)
 {
-    int32_t i = 0, ports = rte_eth_dev_count();
+    int32_t i = 0, ports = rte_eth_dev_count_avail();
 
     doStatsDisplay = 0;
 
@@ -81,7 +81,7 @@ void sigConfig(__attribute__((unused)) int signo)
 void get_link_stats(__attribute__((unused)) struct rte_timer *t, 
                     __attribute__((unused)) void *arg)
 {
-    int32_t i, ports =  rte_eth_dev_count();
+    int32_t i, ports =  rte_eth_dev_count_avail();
     static uint64_t rx_currStat[GTP_PKTGEN_MAXPORTS] = {0};
     static uint64_t tx_currStat[GTP_PKTGEN_MAXPORTS] = {0};
     static uint64_t rx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
@@ -118,7 +118,7 @@ void get_link_stats(__attribute__((unused)) struct rte_timer *t,
 void get_process_stats(__attribute__((unused)) struct rte_timer *t, 
                        __attribute__((unused)) void *arg)
 {
-    int32_t i, ports =  rte_eth_dev_count();
+    int32_t i, ports =  rte_eth_dev_count_avail();
 
     if (likely(doStatsDisplay)) {
     for (i = 0; i < ports; i++)
@@ -240,7 +240,7 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
 void show_static_display(void)
 {
     struct rte_eth_link link;
-    int32_t i, ports =  rte_eth_dev_count();
+    int32_t i, ports =  rte_eth_dev_count_avail();
 
     /* clear screen */
     STATS_CLR_SCREEN;
@@ -375,11 +375,11 @@ void show_static_display(void)
         /*LINK_SPEED_STATE*/
         printf("\033[4;%dH", (15 + 10 * i));
         printf(" %5d-%-2s ", 
-               ((link.link_speed  == ETH_LINK_SPEED_10)?10:
-                (link.link_speed  == ETH_LINK_SPEED_100)?100:
-                (link.link_speed  == ETH_LINK_SPEED_1000)?1000:
-                (link.link_speed  == ETH_LINK_SPEED_10000)?10000:0),
-               ((link.link_duplex == ETH_LINK_HALF_DUPLEX)?"HD":"FD"));
+               ((link.link_speed  == ETH_LINK_SPEED_10M) ? 10 :
+                (link.link_speed  == ETH_LINK_SPEED_100M) ? 100 :
+                (link.link_speed  == ETH_LINK_SPEED_1G) ? 1000 :
+                (link.link_speed  == ETH_LINK_SPEED_10G) ? 10000 : 0),
+               ((link.link_duplex == ETH_LINK_HALF_DUPLEX) ? "HD" : "FD"));
     }
 
     fflush(stdout);
