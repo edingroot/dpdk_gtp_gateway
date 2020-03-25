@@ -55,12 +55,8 @@ typedef enum {
     UE_IP_PROTO,
     GTPC_V1_TX_IPV4,
     GTPC_V1_TX_IPV6,
-    GTPC_V2_TX_IPV4,
-    GTPC_V2_TX_IPV6,
     GTPC_V1_RX_IPV4,
     GTPC_V1_RX_IPV6,
-    GTPC_V2_RX_IPV4,
-    GTPC_V2_RX_IPV6,
     GTPU_TX_IPV4,
     GTPU_TX_IPV6,
     GTPU_RX_IPV4,
@@ -71,9 +67,7 @@ typedef enum {
 
 typedef struct pkt_stats_s {
     uint64_t rx_gtpc_v1_ipv4;
-    uint64_t rx_gtpc_v2_ipv4;
     uint64_t rx_gtpc_v1_ipv6;
-    uint64_t rx_gtpc_v2_ipv6;
     uint64_t rx_gptu_ipv4;
     uint64_t rx_gptu_ipv6;
 

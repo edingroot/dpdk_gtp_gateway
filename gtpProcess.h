@@ -27,31 +27,6 @@ typedef struct extHeader_s {
     char   *content;
 } extHeader_t;
 
-typedef struct gtpv2_s {
-    uint8_t  spare:3;
-    uint8_t  teidF:1;
-    uint8_t  pbF:1;
-    uint8_t  vr:3;
-    uint8_t  msgType;
-    uint16_t msgLen;
-}__attribute__((__packed__)) gtpv2_t;
-
-typedef struct gtpv2_withTeid_s {
-    uint32_t teid;
-    uint32_t seqNumSpare;
-}__attribute__((__packed__)) gtpv2_withTeid_t;
-
-typedef struct gtpv2_noTeid_s {
-    uint32_t seqNumSpare;
-}__attribute__((__packed__)) gtpv2_noTeid_t;
-
-typedef struct gtpv2_tlv_s {
-    uint32_t type:8;
-    uint32_t len:16;
-    uint32_t crFlag_Inst:8;
-    uint8_t  data;
-} gtpv2_tlv_t;
-
 typedef struct fqtei_s {
     uint8_t intfType:6;
     uint8_t ipv6:1;
@@ -80,7 +55,6 @@ typedef struct userInfo_s {
     uint8_t  rep_ipType;
 } __attribute__((__packed__)) userInfo_t;
 
-int32_t process_gtpCv2(void);
 int32_t process_gtpUv1(void);
 
 

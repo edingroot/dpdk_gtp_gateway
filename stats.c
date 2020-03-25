@@ -179,14 +179,6 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
         printf("\033[19;%dH", (15 + 10 * i));
         printf("  %-12lu ", prtPktStats[i].rx_gtpc_v1_ipv6);
 
-        /*GTPC_V2_RX_IPV4*/
-        printf("\033[20;%dH", (15 + 10 * i));
-        printf("  %-12lu ", prtPktStats[i].rx_gtpc_v2_ipv4);
-
-        /*GTPC_V2_RX_IPV6*/
-        printf("\033[21;%dH", (15 + 10 * i));
-        printf("  %-12lu ", prtPktStats[i].rx_gtpc_v2_ipv6);
-
         /*GTPU_RX_IPV4*/
         printf("\033[22;%dH", (15 + 10 * i));
         printf("  %-12lu ", prtPktStats[i].rx_gptu_ipv4);
@@ -305,15 +297,7 @@ void show_static_display(void)
 
     /*GTPC_V1_RX_IPV6*/
     printf("\033[19;1H");
-    printf(YELLOW " %-10s | ", "RX V2C-6");
-
-    /*GTPC_V2_RX_IPV4*/
-    printf("\033[20;1H");
-    printf(YELLOW " %-10s | ", "RX V2C-4");
-
-    /*GTPC_V2_RX_IPV6*/
-    printf("\033[21;1H");
-    printf(YELLOW " %-10s | ", "RX V2C-6");
+    printf(YELLOW " %-10s | ", "RX V1C-6");
 
     /*GTPU_RX_IPV4*/
     printf("\033[22;1H");
@@ -403,4 +387,3 @@ void set_stats_timer (void)
 
     return;
 }
-
