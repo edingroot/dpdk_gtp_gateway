@@ -8,7 +8,7 @@
 #define RTE_TEST_RX_DESC_DEFAULT (1024)
 
 /* STRUCTURES */
-typedef struct numa_Info_s{
+typedef struct numa_Info_s {
     struct rte_mempool *tx[GTP_MAX_LCORECOUNT];
     struct rte_mempool *rx[GTP_MAX_LCORECOUNT];
 
@@ -28,4 +28,3 @@ int32_t populateNodeInfo(void);
 int32_t interfaceSetup(void);
 
 #endif /* __NODE__ */
-

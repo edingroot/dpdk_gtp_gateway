@@ -1,29 +1,25 @@
-#include <string.h>
-
 #include "config.h"
 
+#include <string.h>
+
 uint8_t gtpConfigCount = 0;
-port_gtpConfig_t gtpConfig [GTP_PKTGEN_MAXPORTS] = {{0}};
+port_gtpConfig_t gtpConfig[GTP_PKTGEN_MAXPORTS] = {{0}};
 
 const uint8_t gtpC[GTPC_MAXCOUNT][800] = {GTPC_ECHOREQ, GTPC_ECHOREP, GTPC_CREATEPDU_REQ, GTPC_CREATEPDU_REP};
 const uint8_t gtpU[GTPU_MAXCOUNT][1500] = {GTPU_ICMPREQ, GTPU_ICMPREP};
 
-static inline int getInt(const char *string)
-{
+static inline int getInt(const char *string) {
     int i, stringLength = strlen(string);
 
-    for(i = 0; i < stringLength; i++)
-    {
-        if((isdigit(string [i]) == 0))
+    for (i = 0; i < stringLength; i++) {
+        if ((isdigit(string[i]) == 0))
             return -1;
-
     }
 
     return (atoi(string));
 }
 
-int32_t loadGtpConfig(void)
-{
+int32_t loadGtpConfig(void) {
     struct rte_cfgfile *file = NULL;
     char **section_names = NULL;
     struct rte_cfgfile_entry entries[32];
@@ -62,17 +58,14 @@ int32_t loadGtpConfig(void)
 
                 //printf("\n Before: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
                 for (j = 0; j < ret; j++) {
-                    //printf("\n %15s : %-15s", 
+                    //printf("\n %15s : %-15s",
                     //         entries[j].name, entries[j].value);
 
                     switch (strlen(entries[j].name)) {
-
                         case (4):
                             if (STRCMP("\n && type", entries[j].name))
-                                gtpConfig[i].gtpType = 
-                                      (STRCMP("GTPC",entries[j].value)==0)?GTPC:
-                                      (STRCMP("GTPU",entries[j].value)==0)?GTPU:
-                                      0xff;
+                                gtpConfig[i].gtpType =
+                                    (STRCMP("GTPC", entries[j].value) == 0) ? GTPC : (STRCMP("GTPU", entries[j].value) == 0) ? GTPU : 0xff;
                             break;
 
                         case (5):
@@ -86,19 +79,18 @@ int32_t loadGtpConfig(void)
                             break;
 
                         default:
-                            printf("\n ERROR: unexpected entry %s with value %s", \
+                            printf("\n ERROR: unexpected entry %s with value %s",
                                    entries[j].name, entries[j].value);
                             ret = rte_cfgfile_close(file);
                             return -2;
                     } /* update per entry */
-                } /* iterate entries */
+                }     /* iterate entries */
                 //printf("\n After: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
             } /* entry count */
-        } /* per section */
+        }     /* per section */
         gtpConfigCount = i;
     } /* section count*/
 
     ret = rte_cfgfile_close(file);
     return 0;
 }
-
