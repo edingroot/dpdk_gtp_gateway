@@ -1,5 +1,5 @@
 # GTP_PKT_DECODE
-generic GTPc and GTPu parser using DPDK,
+Generic GTPu parser using DPDK.
 
 Features:
 1) Stats update on stdout

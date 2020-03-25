@@ -5,7 +5,6 @@
 uint8_t gtpConfigCount = 0;
 port_gtpConfig_t gtpConfig[GTP_PKTGEN_MAXPORTS] = {{0}};
 
-const uint8_t gtpC[GTPC_MAXCOUNT][800] = {GTPC_ECHOREQ, GTPC_ECHOREP, GTPC_CREATEPDU_REQ, GTPC_CREATEPDU_REP};
 const uint8_t gtpU[GTPU_MAXCOUNT][1500] = {GTPU_ICMPREQ, GTPU_ICMPREP};
 
 static inline int getInt(const char *string) {
@@ -32,8 +31,7 @@ int32_t loadGtpConfig(void) {
     }
 
     sectCount = rte_cfgfile_num_sections(file, GTP_PKTGEN_INTFTAG, strlen(GTP_PKTGEN_INTFTAG));
-    //printf("\n section starting with INTF are %d", sectCount);
-    //sectCount = rte_cfgfile_num_sections(file, NULL, 0);
+    printf("\n Sections starting with INTF_ are %d", sectCount);
 
     if (sectCount <= GTP_PKTGEN_MAXPORTS) {
         section_names = malloc(sectCount * sizeof(char *));
@@ -43,12 +41,12 @@ int32_t loadGtpConfig(void) {
 
         rte_cfgfile_sections(file, section_names, sectCount);
         for (i = 0; i < sectCount; i++) {
-            //printf("\n\n section - %s", section_names[i]);
+            printf("\n\n [Section - %s]", section_names[i]);
 
             entrCount = rte_cfgfile_section_num_entries(file, section_names[i]);
-            //printf("\n - entries Count: %d", entrCount);
-            //printf("\n - ENTRY : VALUE ");
-            //printf("\n ----------------");
+            // printf("\n - Entries count: %d", entrCount);
+            printf("\n   entry : value ");
+            printf("\n ----------------");
 
             if (entrCount < 4) {
                 /* MAX sections are 3 per interface */
@@ -58,24 +56,17 @@ int32_t loadGtpConfig(void) {
 
                 //printf("\n Before: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
                 for (j = 0; j < ret; j++) {
-                    //printf("\n %15s : %-15s",
-                    //         entries[j].name, entries[j].value);
+                    printf("\n %7s : %-15s", entries[j].name, entries[j].value);
 
                     switch (strlen(entries[j].name)) {
                         case (4):
-                            if (STRCMP("\n && type", entries[j].name))
-                                gtpConfig[i].gtpType =
-                                    (STRCMP("GTPC", entries[j].value) == 0) ? GTPC : (STRCMP("GTPU", entries[j].value) == 0) ? GTPU : 0xff;
+                            if (STRCMP("type", entries[j].name))
+                                gtpConfig[i].gtpType = (STRCMP("GTPU", entries[j].value) == 0) ? GTPU : 0xff;
                             break;
 
                         case (5):
                             if (STRCMP("index", entries[j].name))
                                 gtpConfig[i].pktIndex = atoi(entries[j].value);
-                            break;
-
-                        case (7):
-                            if (STRCMP("version", entries[j].name))
-                                gtpConfig[i].gtpVersion = atoi(entries[j].value);
                             break;
 
                         default:
@@ -92,5 +83,7 @@ int32_t loadGtpConfig(void) {
     } /* section count*/
 
     ret = rte_cfgfile_close(file);
+    printf("\n\n");
+    fflush(stdout);
     return 0;
 }

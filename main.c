@@ -15,7 +15,6 @@
 /* EXTERN */
 extern uint8_t gtpConfigCount;
 extern port_gtpConfig_t gtpConfig[GTP_PKTGEN_MAXPORTS];
-extern const char gtpC[GTPC_MAXCOUNT][1500];
 extern const char gtpU[GTPU_MAXCOUNT][1500];
 extern numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
 extern pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS];

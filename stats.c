@@ -47,8 +47,6 @@ void sigExtraStats(__attribute__((unused)) int signo) {
         printf(" %8u ", i);
         printf("\033[11;%dH", (15 + 10 * i));
         printf(" %8u ", gtpConfig[i].gtpType);
-        printf("\033[12;%dH", (15 + 10 * i));
-        printf(" %8u ", gtpConfig[i].gtpVersion);
         printf("\033[13;%dH", (15 + 10 * i));
         printf(" %8u ", gtpConfig[i].pktIndex);
     }
@@ -163,14 +161,6 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
             printf("\033[14;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].rxNoMbuff);
 
-            /*GTPC_V1_RX_IPV4*/
-            printf("\033[18;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rx_gtpc_v1_ipv4);
-
-            /*GTPC_V1_RX_IPV6*/
-            printf("\033[19;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rx_gtpc_v1_ipv6);
-
             /*GTPU_RX_IPV4*/
             printf("\033[22;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].rx_gptu_ipv4);
@@ -281,14 +271,6 @@ void show_static_display(void) {
 
     printf("\033[17;1H");
     printf(CYAN " %-25s " RESET, "--- PKT STATS ---");
-
-    /*GTPC_V1_RX_IPV4*/
-    printf("\033[18;1H");
-    printf(YELLOW " %-10s | ", "RX V1C-4");
-
-    /*GTPC_V1_RX_IPV6*/
-    printf("\033[19;1H");
-    printf(YELLOW " %-10s | ", "RX V1C-6");
 
     /*GTPU_RX_IPV4*/
     printf("\033[22;1H");
