@@ -24,7 +24,7 @@ void sigExtraStats(__attribute__((unused)) int signo) {
     printf("\033[3;1H");
     printf(BLUE "*************************************************" RESET);
     printf("\033[10;5H");
-    printf(YELLOW " --- TX PKT BUFF DETAILS ---" RESET);
+    printf(YELLOW "  -----------------  TX PKT BUFF DETAILS  ----------" RESET);
     printf("\033[11;1H");
     printf(" +  Type:");
     printf("\033[12;1H");
@@ -114,13 +114,12 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
     if (likely(doStatsDisplay)) {
         for (i = 0; i < ports; i++) {
             /* display dpdk stats from ports */
-#if 0
-        prtPktStats[i].rxPkts
-        prtPktStats[i].txPkts
-        prtPktStats[i].rxMissed
-        prtPktStats[i].rxErr
-        prtPktStats[i].txErr
-#endif
+
+            // prtPktStats[i].rxPkts
+            // prtPktStats[i].txPkts
+            // prtPktStats[i].rxMissed
+            // prtPktStats[i].rxErr
+            // prtPktStats[i].txErr
 
             /* display calculated stats */
 
@@ -161,48 +160,52 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
             printf("\033[14;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].rxNoMbuff);
 
+            /* TX err */
+            printf("\033[15;%dH", (15 + 10 * i));
+            printf("  %-12lu ", prtPktStats[i].txErr);
+
             /*GTPU_RX_IPV4*/
-            printf("\033[22;%dH", (15 + 10 * i));
+            printf("\033[18;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].rx_gptu_ipv4);
 
             /*GTPU_RX_IPV6*/
-            printf("\033[23;%dH", (15 + 10 * i));
+            printf("\033[19;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].rx_gptu_ipv6);
 
             /*ERR NON IPV4*/
-            printf("\033[26;%dH", (15 + 10 * i));
+            printf("\033[22;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].non_ipv4);
 
             /*ERR NON UDP*/
-            printf("\033[27;%dH", (15 + 10 * i));
+            printf("\033[23;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].non_udp);
 
             /*ERR NON GTP*/
-            printf("\033[28;%dH", (15 + 10 * i));
+            printf("\033[24;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].non_gtp);
 
             /*ERR GTP ver*/
-            printf("\033[29;%dH", (15 + 10 * i));
+            printf("\033[25;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].non_gtpVer);
 
             /*ERR IP FRAG*/
-            printf("\033[30;%dH", (15 + 10 * i));
+            printf("\033[26;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].ipFrag);
 
             /*ERR IP CSUM*/
-            printf("\033[31;%dH", (15 + 10 * i));
+            printf("\033[27;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].ipCsumErr);
 
             /*ERR UDP CSUM*/
-            printf("\033[32;%dH", (15 + 10 * i));
+            printf("\033[28;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].udpCsumErr);
 
             /*SURICATA_QUEUE_RX*/
-            printf("\033[34;%dH", (15 + 10 * i));
+            printf("\033[30;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].suricata_rx_queue);
 
             /*SURICATA_QUEUE_TX*/
-            printf("\033[35;%dH", (15 + 10 * i));
+            printf("\033[31;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].suricata_tx_queue);
         }
     }
@@ -247,7 +250,7 @@ void show_static_display(void) {
 
     /*PKT_INFO*/
     printf("\033[10;1H");
-    printf(CYAN " %-25s " RESET, "--- INTF STATS ---");
+    printf(CYAN " %-25s " RESET, "----------  INTF STATS  ----------");
 
     /* Dropped */
     printf("\033[11;1H");
@@ -270,51 +273,51 @@ void show_static_display(void) {
     printf(RED " %-10s | " RESET, "TX ERR");
 
     printf("\033[17;1H");
-    printf(CYAN " %-25s " RESET, "--- PKT STATS ---");
+    printf(CYAN " %-25s " RESET, "----------  GTP PKT STATS  ----------");
 
     /*GTPU_RX_IPV4*/
-    printf("\033[22;1H");
+    printf("\033[18;1H");
     printf(YELLOW " %-10s | ", "RX V1U-4");
 
     /*GTPU_RX_IPV6*/
-    printf("\033[23;1H");
+    printf("\033[19;1H");
     printf(YELLOW " %-10s | " RESET, "RX V1U-6");
 
-    printf("\033[25;1H");
-    printf(CYAN " %-25s " RESET, "--- PKT ERR STATS ---");
+    printf("\033[21;1H");
+    printf(CYAN " %-25s " RESET, "----------  PKT ERR STATS  ----------");
 
     /*NON IPv4*/
-    printf("\033[26;1H");
+    printf("\033[22;1H");
     printf(MAGENTA " %-10s | ", "NON IPv4");
 
     /*NON UDP*/
-    printf("\033[27;1H");
+    printf("\033[23;1H");
     printf(MAGENTA " %-10s | ", "NON UDP");
 
     /*NON GTP*/
-    printf("\033[28;1H");
+    printf("\033[24;1H");
     printf(MAGENTA " %-10s | ", "NON GTP");
 
     /*NON GTP VER*/
-    printf("\033[29;1H");
+    printf("\033[25;1H");
     printf(MAGENTA " %-10s | ", "GTP VER");
 
     /*IP FRAG*/
-    printf("\033[30;1H");
+    printf("\033[26;1H");
     printf(MAGENTA " %-10s | ", "IP FRAG");
 
     /*IP CHECKSUM*/
-    printf("\033[31;1H");
+    printf("\033[27;1H");
     printf(MAGENTA " %-10s | ", "IP CSUM");
 
     /*UDP CHECKSUM*/
-    printf("\033[32;1H");
+    printf("\033[28;1H");
     printf(MAGENTA " %-10s | " RESET, "UDP CSUM");
 
     /*SURICATA QUEUE BUFFER*/
-    printf("\033[34;1H");
+    printf("\033[30;1H");
     printf(BOLDRED " %-10s | ", "RX Queue");
-    printf("\033[35;1H");
+    printf("\033[31;1H");
     printf(BOLDRED " %-10s | " RESET, "TX Queue");
 
     /* fetch port info and display */
@@ -331,7 +334,10 @@ void show_static_display(void) {
         /*LINK_SPEED_STATE*/
         printf("\033[4;%dH", (15 + 10 * i));
         printf(" %5d-%-2s ",
-               ((link.link_speed == ETH_LINK_SPEED_10M) ? 10 : (link.link_speed == ETH_LINK_SPEED_100M) ? 100 : (link.link_speed == ETH_LINK_SPEED_1G) ? 1000 : (link.link_speed == ETH_LINK_SPEED_10G) ? 10000 : 0),
+               ((link.link_speed == ETH_SPEED_NUM_10M) ? 10 : 
+                (link.link_speed == ETH_SPEED_NUM_100M) ? 100 :
+                (link.link_speed == ETH_SPEED_NUM_1G) ? 1000 :
+                (link.link_speed == ETH_SPEED_NUM_10G) ? 10000 : 0),
                ((link.link_duplex == ETH_LINK_HALF_DUPLEX) ? "HD" : "FD"));
     }
 
@@ -342,16 +348,16 @@ void show_static_display(void) {
 void set_stats_timer(void) {
     int32_t lcoreId = rte_get_master_lcore();
 
+    rte_timer_subsystem_init();
+
     /* initialize the stats fetch and display timers */
     rte_timer_init(&fetchStats);
     rte_timer_init(&displayStats);
 
-    /* periodic reload for every 1 sec for stats fetch */
-    rte_timer_reset(&fetchStats, rte_get_timer_hz(), PERIODICAL, lcoreId,
-                    get_link_stats, NULL);
-    /* periodic reload for every 2 sec for stats display */
-    rte_timer_reset(&displayStats, rte_get_timer_hz(), PERIODICAL, lcoreId,
-                    get_process_stats, NULL);
+    /* periodic reload for every 1 sec for stats fetch and display */
+    uint64_t hz = rte_get_timer_hz();
+    rte_timer_reset(&fetchStats, hz, PERIODICAL, lcoreId, get_link_stats, NULL);
+    rte_timer_reset(&displayStats, hz, PERIODICAL, lcoreId, get_process_stats, NULL);
 
     return;
 }

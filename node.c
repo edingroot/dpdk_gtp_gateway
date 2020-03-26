@@ -23,6 +23,7 @@ int32_t populateNodeInfo(void) {
     int32_t i = 0, socketId = -1, lcoreIndex = 0, enable = 0;
     uint8_t coreCount, portCount;
     struct rte_eth_dev_info devInfo;
+    struct rte_ether_addr addr;
 
     /* fetch total lcore count under DPDK */
     coreCount = rte_lcore_count();
@@ -31,8 +32,7 @@ int32_t populateNodeInfo(void) {
         lcoreIndex = rte_lcore_index(i);
         enable = rte_lcore_is_enabled(i);
 
-        //printf ("\n Logical %d Physical %d Socket %d Enabled %d \n",
-        //        i, lcoreIndex, socketId, enable);
+        printf("\n Logical %d Physical %d Socket %d Enabled %d", i, lcoreIndex, socketId, enable);
 
         if (likely(enable)) {
             /* classify the lcore info per NUMA node */
@@ -43,14 +43,23 @@ int32_t populateNodeInfo(void) {
             exit(EXIT_FAILURE);
         }
     }
+    printf("\n");
 
     /* Create mempool per numa node based on interface available */
     portCount = rte_eth_dev_count_avail();
     for (i = 0; i < portCount; i++) {
         rte_eth_dev_info_get(i, &devInfo);
-        printf("\n Inteface %d", i);
-        printf("\n - driver: %s", devInfo.driver_name);
-        printf("\n - if_index: %d", devInfo.if_index);
+        rte_eth_macaddr_get(i, &addr);
+
+        printf("\n Interface %d", i);
+        printf("\n - Driver: %s", devInfo.driver_name);
+        printf("\n - If index: %d", devInfo.if_index);
+        printf("\n - MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8
+			   " %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8,
+			addr.addr_bytes[0], addr.addr_bytes[1],
+			addr.addr_bytes[2], addr.addr_bytes[3],
+			addr.addr_bytes[4], addr.addr_bytes[5]);
+
         const struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(devInfo.device);
         if (pci_dev) {
             printf("\n - PCI INFO ");
@@ -70,6 +79,7 @@ int32_t populateNodeInfo(void) {
         socketId = (devInfo.device->numa_node == -1) ? 0 : devInfo.device->numa_node;
         numaNodeInfo[socketId].intfAvail = numaNodeInfo[socketId].intfAvail | (1 << i);
         numaNodeInfo[socketId].intfTotal += 1;
+        printf("\n");
     }
 
     /* allocate mempool for numa which has NIC interfaces */
@@ -117,7 +127,6 @@ int32_t populateNodeInfo(void) {
 int32_t interfaceSetup(void) {
     uint8_t portIndex = 0, portCount = rte_eth_dev_count_avail();
     int32_t ret = 0, socket_id = -1;
-    struct rte_eth_link link;
 
     for (portIndex = 0; portIndex < portCount; portIndex++) {
         /* fetch the socket Id to which the port the mapped */
@@ -130,7 +139,6 @@ int32_t interfaceSetup(void) {
             }
         }
 
-        memset(&link, 0x00, sizeof(struct rte_eth_link));
         ret = rte_eth_dev_configure(portIndex, 1, 1, &portConf);
         if (unlikely(ret < 0)) {
             rte_panic("ERROR: Dev Configure\n");

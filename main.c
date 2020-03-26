@@ -40,7 +40,7 @@ static int pktDecode_Handler(void *arg) {
     //mbuf_pool_tx = numaNodeInfo[socket_id].tx[0];
     //mbuf_pool_rx = numaNodeInfo[socket_id].rx[port];
 
-    printf("\n arg %d port %d on socket %d \n", *(uint8_t *)arg, port, socket_id);
+    printf("\n Launched handler for port %d on socket %d \n", port, socket_id);
     fflush(stdout);
 
     while (1) {
@@ -67,13 +67,12 @@ static int pktDecode_Handler(void *arg) {
                 /* check for IPv4 */
                 //printf("\n ether type : %x\n", ethHdr->ether_type);
                 if (likely(ethHdr->ether_type == 0x8)) {
-                    /*
                     printf("\n dst MAC: %x:%x:%x:%x:%x:%x port %u ",
                         ethHdr->d_addr.addr_bytes[0], ethHdr->d_addr.addr_bytes[1],
                         ethHdr->d_addr.addr_bytes[2], ethHdr->d_addr.addr_bytes[3],
                         ethHdr->d_addr.addr_bytes[4], ethHdr->d_addr.addr_bytes[5],
                         m->port);
-*/
+
                     ipHdr = (struct rte_ipv4_hdr *)((char *)(ethHdr + 1));
 
                     /* check IP is fragmented */
@@ -222,10 +221,8 @@ static int pktDecode_Handler(void *arg) {
 }
 
 int main(int argc, char **argv) {
-    int32_t ret = 0;
-
-    argc -= ret;
-    argv += ret;
+    int32_t i;
+    int32_t ret;
 
     /* Load INI configuration for fetching GTP port details */
     ret = loadGtpConfig();
@@ -237,14 +234,14 @@ int main(int argc, char **argv) {
     /* Initialize DPDK EAL */
     ret = rte_eal_init(argc, argv);
     if (unlikely(ret < 0)) {
-        printf("\n ERROR: Cannot init EAL\n");
+        printf("\n ERROR: cannot init EAL\n");
         return -2;
     }
 
     /* check Huge pages for memory buffers */
     ret = rte_eal_has_hugepages();
     if (unlikely(ret < 0)) {
-        rte_panic("\n ERROR: No Huge Page\n");
+        rte_panic("\n ERROR: no Huge Page\n");
         exit(EXIT_FAILURE);
     }
 
@@ -260,24 +257,18 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    /*Launch thread in core 1*/
-    ret = 0;
-    rte_eal_remote_launch(pktDecode_Handler, (void *)&ret, 1);
-
-    /*Launch thread in core 2*/
-    ret = 1;
-    rte_eal_remote_launch(pktDecode_Handler, (void *)&ret, 2);
-
-    /*Launch thread in core 3*/
-    ret = 2;
-    rte_eal_remote_launch(pktDecode_Handler, (void *)&ret, 3);
+    /*Launch thread lcores*/
+    ret = rte_eth_dev_count_avail();
+    for (i = 0; i < ret; i++) {
+        rte_eal_remote_launch(pktDecode_Handler, (void *)&i, i + 1);
+    }
 
     /* Register Signal */
     signal(SIGUSR1, sigExtraStats);
     signal(SIGUSR2, sigConfig);
 
     set_stats_timer();
-    rte_delay_ms(5000);
+    rte_delay_ms(2000);
     show_static_display();
 
     do {
