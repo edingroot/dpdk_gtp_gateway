@@ -24,7 +24,7 @@ void sigExtraStats(__attribute__((unused)) int signo) {
     printf("\033[3;1H");
     printf(BLUE "*************************************************" RESET);
     printf("\033[10;5H");
-    printf(YELLOW "  -----------------  TX PKT BUFF DETAILS  ----------" RESET);
+    printf(YELLOW " ------------- TX PKT BUFF DETAILS --------" RESET);
     printf("\033[11;1H");
     printf(" +  Type:");
     printf("\033[12;1H");
@@ -250,7 +250,7 @@ void show_static_display(void) {
 
     /*PKT_INFO*/
     printf("\033[10;1H");
-    printf(CYAN " %-25s " RESET, "----------  INTF STATS  ----------");
+    printf(CYAN " %-25s " RESET, "---------- INTF STATS ----------");
 
     /* Dropped */
     printf("\033[11;1H");
@@ -273,7 +273,7 @@ void show_static_display(void) {
     printf(RED " %-10s | " RESET, "TX ERR");
 
     printf("\033[17;1H");
-    printf(CYAN " %-25s " RESET, "----------  GTP PKT STATS  ----------");
+    printf(CYAN " %-25s " RESET, "------- GTP PKT STATS -------");
 
     /*GTPU_RX_IPV4*/
     printf("\033[18;1H");
@@ -284,7 +284,7 @@ void show_static_display(void) {
     printf(YELLOW " %-10s | " RESET, "RX V1U-6");
 
     printf("\033[21;1H");
-    printf(CYAN " %-25s " RESET, "----------  PKT ERR STATS  ----------");
+    printf(CYAN " %-25s " RESET, "-------- PKT ERR STATS --------");
 
     /*NON IPv4*/
     printf("\033[22;1H");
