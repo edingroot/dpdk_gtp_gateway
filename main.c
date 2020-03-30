@@ -1,3 +1,5 @@
+#include <rte_ip_frag.h>
+
 #include "config.h"
 #include "gtpProcess.h"
 #include "node.h"
@@ -28,7 +30,7 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
     ethHdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
     // Check for IPv4
-    // printf("\n ether type : %x\n", ethHdr->ether_type);
+    // printf("\n[RX] ether type : %x", ethHdr->ether_type);
     if (likely(ethHdr->ether_type == 0x8)) {
         // printf("\n dst MAC: %x:%x:%x:%x:%x:%x port %u ",
         //     ethHdr->d_addr.addr_bytes[0], ethHdr->d_addr.addr_bytes[1],
@@ -39,7 +41,7 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
         ipHdr = (struct rte_ipv4_hdr *)((char *)(ethHdr + 1));
 
         // Check IP is fragmented
-        if (unlikely(ipHdr->fragment_offset & 0xfffc)) {
+        if (unlikely(rte_ipv4_frag_pkt_is_fragmented(ipHdr))) {
             prtPktStats[port].ipFrag += 1;
             rte_free(m);
             return;
@@ -79,8 +81,11 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
                     prtPktStats[port].rx_gptu_ipv4 += 1;
                 }
 
-                ret = rte_eth_tx_burst(port, 0, &m, 1);
+                // Forward gtp
+                uint16_t fwd_port_id = port ^ 1;
+                ret = rte_eth_tx_burst(fwd_port_id, 0, &m, 1);
                 if (likely(ret == 1)) {
+                    prtPktStats[fwd_port_id].tx_gptu += 1;
                     return;
                 }
             } else {
@@ -93,6 +98,12 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
     } else {
         prtPktStats[port].non_ipv4 += 1;
     } // (unlikely(ethHdr->ether_type != 0x0008))
+
+    // Forward all non-gtpu packets
+    // ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);
+    // if (likely(ret == 1)) {
+    //     return;
+    // }
 
     rte_pktmbuf_free(m);
 }
@@ -193,7 +204,7 @@ int main(int argc, char **argv) {
     signal(SIGUSR2, sigConfig);
 
     set_stats_timer();
-    rte_delay_ms(2000);
+    rte_delay_ms(1000);
     show_static_display();
 
     do {

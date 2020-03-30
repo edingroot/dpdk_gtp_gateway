@@ -1,7 +1,7 @@
 #include "stats.h"
 
 /* GLOBAL */
-pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS];
+pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS] = {0};
 
 static struct rte_timer fetchStats;
 static struct rte_timer displayStats;
@@ -89,8 +89,10 @@ void get_link_stats(__attribute__((unused)) struct rte_timer *t,
             rx_currStat[i] = stats.ipackets;
             tx_currStat[i] = stats.opackets;
 
-            prtPktStats[i].rxPkts = (rx_currStat[i] - rx_prevStat[i]);
-            prtPktStats[i].txPkts = (tx_currStat[i] - tx_prevStat[i]);
+            // prtPktStats[i].rxPkts = (rx_currStat[i] - rx_prevStat[i]);
+            // prtPktStats[i].txPkts = (tx_currStat[i] - tx_prevStat[i]);
+            prtPktStats[i].rxPkts = rx_currStat[i];
+            prtPktStats[i].txPkts = tx_currStat[i];
 
             rx_prevStat[i] = stats.ipackets;
             tx_prevStat[i] = stats.opackets;
@@ -113,15 +115,7 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
 
     if (likely(doStatsDisplay)) {
         for (i = 0; i < ports; i++) {
-            /* display dpdk stats from ports */
-
-            // prtPktStats[i].rxPkts
-            // prtPktStats[i].txPkts
-            // prtPktStats[i].rxMissed
-            // prtPktStats[i].rxErr
-            // prtPktStats[i].txErr
-
-            /* display calculated stats */
+            /* Display calculated stats */
 
             /*NUMA_SOCKET*/
             printf("\033[4;%dH", (15 + 10 * i));
@@ -200,13 +194,9 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
             printf("\033[28;%dH", (15 + 10 * i));
             printf("  %-12lu ", prtPktStats[i].udpCsumErr);
 
-            /*SURICATA_QUEUE_RX*/
+            /*TX GTPU*/
             printf("\033[30;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].suricata_rx_queue);
-
-            /*SURICATA_QUEUE_TX*/
-            printf("\033[31;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].suricata_tx_queue);
+            printf("  %-12lu ", prtPktStats[i].tx_gptu);
         }
     }
 
@@ -254,15 +244,15 @@ void show_static_display(void) {
 
     /* Dropped */
     printf("\033[11;1H");
-    printf(RED " %-10s | ", "Drp");
+    printf(RED " %-10s | ", "DROP");
 
     /* RX miss*/
     printf("\033[12;1H");
-    printf(RED " %-10s | ", "RX Miss");
+    printf(RED " %-10s | ", "RX MISS");
 
     /* RX Err */
     printf("\033[13;1H");
-    printf(RED " %-10s | ", "RX Err");
+    printf(RED " %-10s | ", "RX ERR");
 
     /* RX no Mbuf */
     printf("\033[14;1H");
@@ -314,11 +304,9 @@ void show_static_display(void) {
     printf("\033[28;1H");
     printf(MAGENTA " %-10s | " RESET, "UDP CSUM");
 
-    /*SURICATA QUEUE BUFFER*/
+    /*GTPU*/
     printf("\033[30;1H");
-    printf(BOLDRED " %-10s | ", "RX Queue");
-    printf("\033[31;1H");
-    printf(BOLDRED " %-10s | " RESET, "TX Queue");
+    printf(BOLDRED " %-10s | ", "TX GTPU");
 
     /* fetch port info and display */
     for (i = 0; i < ports; i++) {

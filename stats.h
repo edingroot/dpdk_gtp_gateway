@@ -64,6 +64,7 @@ typedef enum {
 typedef struct pkt_stats_s {
     uint64_t rx_gptu_ipv4;
     uint64_t rx_gptu_ipv6;
+    uint64_t tx_gptu;
 
     uint64_t non_ipv4;
     uint64_t non_udp;
@@ -74,9 +75,6 @@ typedef struct pkt_stats_s {
     uint64_t udpCsumErr;
 
     uint64_t dropped;
-
-    uint64_t suricata_rx_queue;
-    uint64_t suricata_tx_queue;
 
     uint64_t rxPkts;
     uint64_t txPkts;
