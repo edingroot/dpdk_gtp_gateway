@@ -42,8 +42,16 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = gtpPktDecode
 
 # all source are stored in SRCS-y
-SRC_DIR=./src
-SRCS-y := ${SRC_DIR}/main.c ${SRC_DIR}/config.c ${SRC_DIR}/node.c ${SRC_DIR}/stats.c
+SRC_DIR = $(abspath $(shell pwd)/..)/src
+LIB_DIR = $(SRC_DIR)/lib
+
+CFLAGS += -I${LIB_DIR}
+LDFLAGS += -L$(LIB_DIR)
+
+SRCS-y := $(LIB_DIR)/logger.c $(LIB_DIR)/mbuf.c \
+		  $(SRC_DIR)/netstack/arp.c $(SRC_DIR)/netstack/ether.c \
+		  $(SRC_DIR)/node.c $(SRC_DIR)/stats.c $(SRC_DIR)/config.c \
+		  $(SRC_DIR)/main.c
 
 CFLAGS += -g -O3
 #CFLAGS += -g -Ofast

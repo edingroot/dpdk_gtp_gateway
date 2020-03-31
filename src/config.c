@@ -54,7 +54,7 @@ int32_t loadGtpConfig(void) {
 
                 gtpConfig[i].prtIndex = getInt(section_names[i] + strlen(GTP_PKTGEN_INTFTAG));
 
-                //printf("\n Before: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
+                // printf("\n Before: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
                 for (j = 0; j < ret; j++) {
                     printf("\n %7s : %-15s", entries[j].name, entries[j].value);
 
@@ -75,12 +75,12 @@ int32_t loadGtpConfig(void) {
                             ret = rte_cfgfile_close(file);
                             return -2;
                     } /* update per entry */
-                }     /* iterate entries */
+                } /* iterate entries */
                 //printf("\n After: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
             } /* entry count */
-        }     /* per section */
+        } /* per section */
         gtpConfigCount = i;
-    } /* section count*/
+    } /* section count */
 
     ret = rte_cfgfile_close(file);
     printf("\n\n");

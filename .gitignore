@@ -1,4 +1,6 @@
 build/
 DevDocs/
 
+*.o*
+
 .vscode/
