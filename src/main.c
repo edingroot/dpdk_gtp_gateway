@@ -1,7 +1,7 @@
 #include <rte_ip_frag.h>
 
 #include "config.h"
-#include "gtpProcess.h"
+#include "gtp_process.h"
 #include "node.h"
 #include "stats.h"
 
@@ -18,14 +18,12 @@
 extern numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
 extern pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS];
 
-static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
-    int32_t ret;
+static inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port) {
     struct rte_ether_hdr *ethHdr = NULL;
     struct rte_ipv4_hdr *ipHdr = NULL;
     struct rte_udp_hdr *udpHdr = NULL;
 
     gtpv1_t *gtp1Hdr = NULL;
-    struct rte_ipv4_hdr *ipUeHdr = NULL;
     
     ethHdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
@@ -58,7 +56,7 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
                         udpHdr->dst_port == 0x6808)) {
                 gtp1Hdr = (gtpv1_t *)((char *)(udpHdr + 1));
 
-                // check if gtp version is 1
+                // Check if gtp version is 1
                 if (unlikely(gtp1Hdr->vr != 1)) {
                     prtPktStats[port].non_gtpVer += 1;
                     rte_free(m);
@@ -72,20 +70,7 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
                     return;
                 }
 
-                // TODO: is this correct??
-                ipUeHdr = (struct rte_ipv4_hdr *)(((char *)(udpHdr + 1)));
-
-                if (unlikely(ipUeHdr->version_ihl & 0x40) != 0x40) {
-                    prtPktStats[port].rx_gptu_ipv6 += 1;
-                } else {
-                    prtPktStats[port].rx_gptu_ipv4 += 1;
-                }
-
-                // Forward gtp
-                uint16_t fwd_port_id = port ^ 1;
-                ret = rte_eth_tx_burst(fwd_port_id, 0, &m, 1);
-                if (likely(ret == 1)) {
-                    prtPktStats[fwd_port_id].tx_gptu += 1;
+                if (process_gtpv1(m, port, ipHdr, udpHdr) > 0) {
                     return;
                 }
             } else {
@@ -100,7 +85,7 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
     } // (unlikely(ethHdr->ether_type != 0x0008))
 
     // Forward all non-gtpu packets
-    // ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);
+    // int32_t ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);
     // if (likely(ret == 1)) {
     //     return;
     // }
@@ -108,7 +93,7 @@ static inline void processPktMbuf(struct rte_mbuf *m, uint8_t port) {
     rte_pktmbuf_free(m);
 }
 
-static int pktDecode_Handler(void *arg) {
+static int pkt_handler(void *arg) {
     uint8_t port = *((uint8_t *)arg);
     unsigned lcore_id, socket_id;
     int32_t j, nb_rx;
@@ -143,12 +128,12 @@ static int pktDecode_Handler(void *arg) {
                 // Prefetch others packets
                 rte_prefetch0(rte_pktmbuf_mtod(ptr[j + PREFETCH_OFFSET], void *));
 
-                processPktMbuf(m, port);
+                process_pkt_mbuf(m, port);
             }
 
             for (; j < nb_rx; j++) {
                 m = ptr[j];
-                processPktMbuf(m, port);
+                process_pkt_mbuf(m, port);
             }
         } // end of packet count check
     }
@@ -196,7 +181,7 @@ int main(int argc, char **argv) {
     // Launch thread lcores
     ret = rte_eth_dev_count_avail();
     for (i = 0; i < ret; i++) {
-        rte_eal_remote_launch(pktDecode_Handler, (void *)&i, i + 1);
+        rte_eal_remote_launch(pkt_handler, (void *)&i, i + 1);
     }
 
     // Register signals

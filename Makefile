@@ -42,7 +42,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = gtpPktDecode
 
 # all source are stored in SRCS-y
-SRCS-y := main.c config.c node.c stats.c gtpProcess.c
+SRC_DIR=./src
+SRCS-y := ${SRC_DIR}/main.c ${SRC_DIR}/config.c ${SRC_DIR}/node.c ${SRC_DIR}/stats.c
 
 CFLAGS += -g -O3
 #CFLAGS += -g -Ofast

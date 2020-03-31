@@ -77,8 +77,8 @@ void get_link_stats(__attribute__((unused)) struct rte_timer *t,
     int32_t i, ports = rte_eth_dev_count_avail();
     static uint64_t rx_currStat[GTP_PKTGEN_MAXPORTS] = {0};
     static uint64_t tx_currStat[GTP_PKTGEN_MAXPORTS] = {0};
-    static uint64_t rx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
-    static uint64_t tx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
+    // static uint64_t rx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
+    // static uint64_t tx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
 
     /* get link status for DPDK ports */
     struct rte_eth_stats stats;
@@ -94,8 +94,8 @@ void get_link_stats(__attribute__((unused)) struct rte_timer *t,
             prtPktStats[i].rxPkts = rx_currStat[i];
             prtPktStats[i].txPkts = tx_currStat[i];
 
-            rx_prevStat[i] = stats.ipackets;
-            tx_prevStat[i] = stats.opackets;
+            // rx_prevStat[i] = stats.ipackets;
+            // tx_prevStat[i] = stats.opackets;
 
             prtPktStats[i].rxBytes = stats.ibytes / (1024 * 1024);
             prtPktStats[i].txBytes = stats.obytes / (1024 * 1024);
@@ -290,7 +290,7 @@ void show_static_display(void) {
 
     /*NON GTP VER*/
     printf("\033[25;1H");
-    printf(MAGENTA " %-10s | ", "GTP VER");
+    printf(MAGENTA " %-10s | ", "GTP E_VER");
 
     /*IP FRAG*/
     printf("\033[26;1H");

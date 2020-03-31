@@ -59,4 +59,3 @@ typedef struct port_gtpConfig_s {
 int32_t loadGtpConfig(void);
 
 #endif /*__CONFIG_H__*/
-
