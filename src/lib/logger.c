@@ -1,7 +1,6 @@
 #include "logger.h"
 
 #include <stdarg.h>
-#include <rte_common.h>
 
 #define LOG_FILE "dpdkgtpv1.log"
 

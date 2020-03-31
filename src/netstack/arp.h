@@ -68,6 +68,5 @@ int send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add);
 int send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add);
 void print_add(uint32_t ip_add);
 void print_arp_table(void);
-void dump_arp_pkt(struct arp *);
 
 #endif /* __ARP_H_ */

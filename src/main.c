@@ -4,6 +4,7 @@
 #include "config.h"
 #include "node.h"
 #include "stats.h"
+#include "netstack/arp.h"
 #include "gtp_process.h"
 
 /* DEFINES */
@@ -13,11 +14,9 @@
 /* GLOBALS */
 
 /* EXTERN */
-// extern uint8_t gtpConfigCount;
-// extern port_gtpConfig_t gtpConfig[GTP_PKTGEN_MAXPORTS];
-// extern const char gtpU[GTPU_MAXCOUNT][1500];
+extern app_confg_t app_config;
 extern numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
-extern pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS];
+extern pkt_stats_t prtPktStats[GTP_CFG_MAX_PORTS];
 
 static int pkt_handler(void *arg);
 static inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port);
@@ -30,7 +29,7 @@ main(int argc, char **argv) {
     logger_init();
 
     // Load INI configuration for fetching GTP port details
-    ret = loadGtpConfig();
+    ret = load_gtp_config();
     if (unlikely(ret < 0)) {
         printf("\n ERROR: failed to load config\n");
         return -1;
@@ -72,9 +71,13 @@ main(int argc, char **argv) {
     signal(SIGUSR1, sigExtraStats);
     signal(SIGUSR2, sigConfig);
 
-    set_stats_timer();
-    rte_delay_ms(1000);
-    show_static_display();
+    // Show stats
+    printf("\n DISP_STATS=%s\n", app_config.disp_stats ? "ON" : "OFF");
+    if (app_config.disp_stats) {
+        set_stats_timer();
+        rte_delay_ms(1000);
+        show_static_display();
+    }
 
     do {
         rte_delay_ms(1000);
@@ -137,70 +140,76 @@ pkt_handler(void *arg)
 static
 inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
 {
-    struct rte_ether_hdr *ethHdr = NULL;
-    struct rte_ipv4_hdr *ipHdr = NULL;
-    struct rte_udp_hdr *udpHdr = NULL;
+    struct rte_ether_hdr *eth_hdr = NULL;
+    struct rte_ipv4_hdr *ip_hdr = NULL;
+    struct rte_udp_hdr *udp_hdr = NULL;
 
-    gtpv1_t *gtp1Hdr = NULL;
+    gtpv1_t *gtp1_hdr = NULL;
     
-    ethHdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+    eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-    // Check for IPv4
-    // printf("\n[RX] ether type : %x", ethHdr->ether_type);
-    if (likely(ethHdr->ether_type == 0x8)) {
+    // printf("\n[RX] ether type : %x", eth_hdr->ether_type);
+    // Ether type: IPv4 (0x8)
+    if (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) {
         // printf("\n dst MAC: %x:%x:%x:%x:%x:%x port %u ",
-        //     ethHdr->d_addr.addr_bytes[0], ethHdr->d_addr.addr_bytes[1],
-        //     ethHdr->d_addr.addr_bytes[2], ethHdr->d_addr.addr_bytes[3],
-        //     ethHdr->d_addr.addr_bytes[4], ethHdr->d_addr.addr_bytes[5],
+        //     eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
+        //     eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
+        //     eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5],
         //     m->port);
 
-        ipHdr = (struct rte_ipv4_hdr *)((char *)(ethHdr + 1));
+        ip_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1));
 
         // Check IP is fragmented
-        if (unlikely(rte_ipv4_frag_pkt_is_fragmented(ipHdr))) {
+        if (unlikely(rte_ipv4_frag_pkt_is_fragmented(ip_hdr))) {
             prtPktStats[port].ipFrag += 1;
             rte_free(m);
             return;
         }
 
         // Check for UDP
-        // printf("\n protocol: %x\n", ipHdr->next_proto_id);
-        if (likely(ipHdr->next_proto_id == 0x11)) {
-            udpHdr = (struct rte_udp_hdr *)((char *)(ipHdr + 1));
-            // printf("\n Port src: %x dst: %x\n", udpHdr->src_port, udpHdr->dst_port);
+        // printf("\n protocol: %x\n", ip_hdr->next_proto_id);
+        if (likely(ip_hdr->next_proto_id == 0x11)) {
+            udp_hdr = (struct rte_udp_hdr *)((char *)(ip_hdr + 1));
+            // printf("\n Port src: %x dst: %x\n", udp_hdr->src_port, udp_hdr->dst_port);
 
             /* GTPU LTE carries V1 only 2152*/
-            if (likely(udpHdr->src_port == 0x6808 || 
-                        udpHdr->dst_port == 0x6808)) {
-                gtp1Hdr = (gtpv1_t *)((char *)(udpHdr + 1));
+            if (likely(udp_hdr->src_port == 0x6808 || 
+                        udp_hdr->dst_port == 0x6808)) {
+                gtp1_hdr = (gtpv1_t *)((char *)(udp_hdr + 1));
 
                 // Check if gtp version is 1
-                if (unlikely(gtp1Hdr->vr != 1)) {
+                if (unlikely(gtp1_hdr->vr != 1)) {
                     prtPktStats[port].non_gtpVer += 1;
                     rte_free(m);
                     return;
                 }
 
                 // Check if msg type is PDU
-                if (unlikely(gtp1Hdr->msgType == 0xff)) {
+                if (unlikely(gtp1_hdr->msgType == 0xff)) {
                     prtPktStats[port].dropped += 1;
                     rte_free(m);
                     return;
                 }
 
-                if (process_gtpv1(m, port, ipHdr, udpHdr) > 0) {
+                if (likely(process_gtpv1(m, port, ip_hdr, udp_hdr) > 0)) {
                     return;
                 }
             } else {
                 prtPktStats[port].non_gtp += 1;
-            } /* (unlikely(udpHdr->src|dst_port != 2123)) */
+            } /* (unlikely(udp_hdr->src|dst_port != 2123)) */
         } else {
             prtPktStats[port].non_udp += 1;
-        } /* (unlikely(ipHdr->next_proto_id != 0x11)) */
+        } /* (unlikely(ip_hdr->next_proto_id != 0x11)) */
 
     } else {
         prtPktStats[port].non_ipv4 += 1;
-    } /* (unlikely(ethHdr->ether_type != 0x0008)) */
+
+        // Ether type: ARP
+        if (unlikely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))) {
+            arp_in(m);
+            return;
+        }
+    } /* (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) */
 
     // Forward all non-gtpu packets
     // int32_t ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);

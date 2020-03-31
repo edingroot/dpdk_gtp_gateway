@@ -1,13 +1,13 @@
 #include "config.h"
 
 #include <string.h>
+#include <assert.h>
 
-uint8_t gtpConfigCount = 0;
-port_gtpConfig_t gtpConfig[GTP_PKTGEN_MAXPORTS] = {{0}};
+app_confg_t app_config = {0};
 
-const uint8_t gtpU[GTPU_MAXCOUNT][1500] = {GTPU_ICMPREQ, GTPU_ICMPREP};
-
-static inline int getInt(const char *string) {
+static inline int
+get_int(const char *string)
+{
     int i, stringLength = strlen(string);
 
     for (i = 0; i < stringLength; i++) {
@@ -15,74 +15,116 @@ static inline int getInt(const char *string) {
             return -1;
     }
 
-    return (atoi(string));
+    return atoi(string);
 }
 
-int32_t loadGtpConfig(void) {
-    struct rte_cfgfile *file = NULL;
-    char **section_names = NULL;
+static int 
+load_global_entries(struct rte_cfgfile *file)
+{
+    const char *section_name = "Global";
+    int32_t j = 0, ret = -1;
     struct rte_cfgfile_entry entries[32];
-    int32_t sectCount = 0, entrCount = 0, i = 0, j = 0, ret = -1;
 
-    file = rte_cfgfile_load(GTP_CONFIGFILE, 0);
+    ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
+
+    for (j = 0; j < ret; j++) {
+        printf("\n %15s : %-15s", entries[j].name, entries[j].value);
+
+        switch (strlen(entries[j].name)) {
+            case 10:
+                if (STRCMP("disp_stats", entries[j].name) == 0) {
+                    app_config.disp_stats = STRCMP("1", entries[j].value) == 0;
+                }
+                break;
+
+            default:
+                printf("\n ERROR: unexpected entry %s with value %s",
+                        entries[j].name, entries[j].value);
+                return -1;
+        } /* update per entry */
+    } /* iterate entries */
+
+    return 0;
+}
+
+static int 
+load_intf_entries(struct rte_cfgfile *file, int32_t idx, const char *section_name)
+{
+    int32_t j = 0, ret = -1;
+    struct rte_cfgfile_entry entries[32];
+    
+    ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
+    app_config.gtp_ports[idx].port_index = get_int(section_name + strlen(GTP_CFG_TAG_INTF));
+
+    for (j = 0; j < ret; j++) {
+        printf("\n %15s : %-15s", entries[j].name, entries[j].value);
+
+        switch (strlen(entries[j].name)) {
+            case 4:
+                if (STRCMP("type", entries[j].name)) {
+                    app_config.gtp_ports[idx].gtp_type = 
+                        (STRCMP("GTPU", entries[j].value) == 0) ? CFG_VAL_GTPU : 0xff;
+                }
+                break;
+
+            case 5:
+                if (STRCMP("index", entries[j].name))
+                    app_config.gtp_ports[idx].pkt_index = atoi(entries[j].value);
+                break;
+
+            default:
+                printf("\n ERROR: unexpected entry %s with value %s",
+                        entries[j].name, entries[j].value);
+                return -1;
+        } /* update per entry */
+    } /* iterate entries */
+
+    return 0;
+}
+
+int32_t load_gtp_config(void) {
+    struct rte_cfgfile *file = NULL;
+    int32_t i = 0, ret;
+    char **section_names = NULL;
+
+    file = rte_cfgfile_load(GTP_CFG_FILE, 0);
     if (file == NULL) {
-        printf("Cannot load configuration profile %s\n", GTP_CONFIGFILE);
+        printf("Cannot load configuration profile %s\n", GTP_CFG_FILE);
         return -1;
     }
 
-    sectCount = rte_cfgfile_num_sections(file, GTP_PKTGEN_INTFTAG, strlen(GTP_PKTGEN_INTFTAG));
-    printf("\n Sections starting with INTF_ are %d", sectCount);
+    printf("\n Loading config entries:");
+    
+    int32_t intf_count = rte_cfgfile_num_sections(file, GTP_CFG_TAG_INTF, strlen(GTP_CFG_TAG_INTF));
+    // printf("\n Sections starting with INTF_ are %d", intf_count);
+    if (intf_count > GTP_CFG_MAX_PORTS) {
+        printf("Error: INTF count(%d) > GTP_CFG_MAX_PORTS(%d)\n", intf_count, GTP_CFG_MAX_PORTS);
+    }
+    app_config.gtp_ports_count = intf_count;
 
-    if (sectCount <= GTP_PKTGEN_MAXPORTS) {
-        section_names = malloc(sectCount * sizeof(char *));
+    const int32_t section_count = intf_count + 1; // "Global" + ("INTF_" * intf_count)
+    section_names = malloc(section_count * sizeof(char *));
+    for (i = 0; i < section_count; i++)
+        section_names[i] = malloc(GTP_CFG_MAX_KEYLEN + 1);
+    
+    rte_cfgfile_sections(file, section_names, section_count);
 
-        for (i = 0; i < sectCount; i++)
-            section_names[i] = malloc(10);
+    for (i = 0; i < section_count; i++) {
+        printf("\n\n              [%s]", section_names[i]);
+        printf("\n --------------------------------");
 
-        rte_cfgfile_sections(file, section_names, sectCount);
-        for (i = 0; i < sectCount; i++) {
-            printf("\n\n [Section - %s]", section_names[i]);
-
-            entrCount = rte_cfgfile_section_num_entries(file, section_names[i]);
-            // printf("\n - Entries count: %d", entrCount);
-            printf("\n   entry : value ");
-            printf("\n ----------------");
-
-            if (entrCount < 4) {
-                /* MAX sections are 3 per interface */
-                ret = rte_cfgfile_section_entries(file, section_names[i], entries, entrCount);
-
-                gtpConfig[i].prtIndex = getInt(section_names[i] + strlen(GTP_PKTGEN_INTFTAG));
-
-                // printf("\n Before: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
-                for (j = 0; j < ret; j++) {
-                    printf("\n %7s : %-15s", entries[j].name, entries[j].value);
-
-                    switch (strlen(entries[j].name)) {
-                        case (4):
-                            if (STRCMP("type", entries[j].name))
-                                gtpConfig[i].gtpType = (STRCMP("GTPU", entries[j].value) == 0) ? GTPU : 0xff;
-                            break;
-
-                        case (5):
-                            if (STRCMP("index", entries[j].name))
-                                gtpConfig[i].pktIndex = atoi(entries[j].value);
-                            break;
-
-                        default:
-                            printf("\n ERROR: unexpected entry %s with value %s",
-                                   entries[j].name, entries[j].value);
-                            ret = rte_cfgfile_close(file);
-                            return -2;
-                    } /* update per entry */
-                } /* iterate entries */
-                //printf("\n After: Port: %d gtp type %d", i, gtpConfig[i].gtpType);
-            } /* entry count */
-        } /* per section */
-        gtpConfigCount = i;
-    } /* section count */
-
+        if (STRCMP("Global", section_names[i]) == 0) {
+            ret = load_global_entries(file);
+            assert(ret == 0);
+        } else if (STRNCMP(GTP_CFG_TAG_INTF, section_names[i], strlen(GTP_CFG_TAG_INTF)) == 0) {
+            ret = load_intf_entries(file, i, section_names[i]);
+            assert(ret == 0);
+        }
+    } /* per section */
+    
     ret = rte_cfgfile_close(file);
+    assert(ret == 0);
+
     printf("\n\n");
     fflush(stdout);
     return 0;

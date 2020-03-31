@@ -1,7 +1,7 @@
 #include "stats.h"
 
 /* GLOBAL */
-pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS] = {0};
+pkt_stats_t prtPktStats[GTP_CFG_MAX_PORTS] = {0};
 
 static struct rte_timer fetchStats;
 static struct rte_timer displayStats;
@@ -9,7 +9,7 @@ static struct rte_timer displayStats;
 uint8_t doStatsDisplay = 1;
 
 /* EXTERN */
-extern port_gtpConfig_t gtpConfig[GTP_PKTGEN_MAXPORTS];
+extern app_confg_t app_config;
 extern numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
 
 void sigExtraStats(__attribute__((unused)) int signo) {
@@ -46,9 +46,9 @@ void sigExtraStats(__attribute__((unused)) int signo) {
         printf("\033[2;%dH", (15 + 10 * i));
         printf(" %8u ", i);
         printf("\033[11;%dH", (15 + 10 * i));
-        printf(" %8u ", gtpConfig[i].gtpType);
+        printf(" %8u ", app_config.gtp_ports[i].gtp_type);
         printf("\033[13;%dH", (15 + 10 * i));
-        printf(" %8u ", gtpConfig[i].pktIndex);
+        printf(" %8u ", app_config.gtp_ports[i].pkt_index);
     }
 
     for (i = 0; i < GTP_MAX_NUMANODE; i++) {
@@ -75,10 +75,10 @@ void sigConfig(__attribute__((unused)) int signo) {
 void get_link_stats(__attribute__((unused)) struct rte_timer *t,
                     __attribute__((unused)) void *arg) {
     int32_t i, ports = rte_eth_dev_count_avail();
-    static uint64_t rx_currStat[GTP_PKTGEN_MAXPORTS] = {0};
-    static uint64_t tx_currStat[GTP_PKTGEN_MAXPORTS] = {0};
-    // static uint64_t rx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
-    // static uint64_t tx_prevStat[GTP_PKTGEN_MAXPORTS] = {0};
+    static uint64_t rx_currStat[GTP_CFG_MAX_PORTS] = {0};
+    static uint64_t tx_currStat[GTP_CFG_MAX_PORTS] = {0};
+    // static uint64_t rx_prevStat[GTP_CFG_MAX_PORTS] = {0};
+    // static uint64_t tx_prevStat[GTP_CFG_MAX_PORTS] = {0};
 
     /* get link status for DPDK ports */
     struct rte_eth_stats stats;

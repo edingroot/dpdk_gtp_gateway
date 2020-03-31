@@ -5,7 +5,7 @@
 
 #include "stats.h"
 
-extern pkt_stats_t prtPktStats[GTP_PKTGEN_MAXPORTS];
+extern pkt_stats_t prtPktStats[GTP_CFG_MAX_PORTS];
 
 typedef struct gtpv1_s {
     uint8_t nPduNF : 1;

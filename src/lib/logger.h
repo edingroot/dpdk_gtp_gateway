@@ -19,7 +19,7 @@ typedef enum {
 
 typedef enum {
     L_CRITICAL,
-    L_NORMAL,
+    L_INFO,
     L_DEBUG,
     ALL,
 } TRACE_LEVEL;
@@ -34,7 +34,7 @@ void logger_init(void);
 void logger_enable_trace(FEATURE feature, TRACE_LEVEL Level);
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define logger printf("[Log] %s(%s)L%d :: ", __FILENAME__, __func__, __LINE__); log_print
+#define logger printf("[Log] %s(%s:%d) :: ", __FILENAME__, __func__, __LINE__); log_print
 
 void log_print(FEATURE feature, TRACE_LEVEL Level, const char *format, ...);
 

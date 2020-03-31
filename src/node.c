@@ -2,6 +2,8 @@
 
 #include <rte_bus_pci.h>
 
+#include "pktbuf.h"
+
 /* GLOBAL */
 numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
 
@@ -51,7 +53,7 @@ int32_t populateNodeInfo(void) {
         rte_eth_dev_info_get(i, &devInfo);
         rte_eth_macaddr_get(i, &addr);
 
-        printf("\n Interface %d", i);
+        printf("\n [Interface %d]", i);
         printf("\n - Driver: %s", devInfo.driver_name);
         printf("\n - If index: %d", devInfo.if_index);
         printf("\n - MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8
