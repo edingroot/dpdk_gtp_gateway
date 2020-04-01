@@ -5,7 +5,7 @@
 #include "pktbuf.h"
 
 /* GLOBAL */
-numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
+numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 
 static const struct rte_eth_conf portConf = {
     .rxmode = {
@@ -21,7 +21,9 @@ static const struct rte_eth_conf portConf = {
     },
 };
 
-int32_t populateNodeInfo(void) {
+int32_t
+populate_node_info(void)
+{
     int32_t i = 0, socketId = -1, lcoreIndex = 0, enable = 0;
     uint8_t coreCount, portCount;
     struct rte_eth_dev_info devInfo;
@@ -34,12 +36,12 @@ int32_t populateNodeInfo(void) {
         lcoreIndex = rte_lcore_index(i);
         enable = rte_lcore_is_enabled(i);
 
-        printf("\n Logical %d Physical %d Socket %d Enabled %d", i, lcoreIndex, socketId, enable);
+        printf("\n Logical %d Physical %d Socket %d enabled %d", i, lcoreIndex, socketId, enable);
 
         if (likely(enable)) {
             /* classify the lcore info per NUMA node */
-            numaNodeInfo[socketId].lcoreAvail = numaNodeInfo[socketId].lcoreAvail | (1 << lcoreIndex);
-            numaNodeInfo[socketId].lcoreTotal += 1;
+            numa_node_info[socketId].lcoreAvail = numa_node_info[socketId].lcoreAvail | (1 << lcoreIndex);
+            numa_node_info[socketId].lcoreTotal += 1;
         } else {
             rte_panic("ERROR: Lcore %d Socket %d not enabled\n", lcoreIndex, socketId);
             exit(EXIT_FAILURE);
@@ -58,9 +60,9 @@ int32_t populateNodeInfo(void) {
         printf("\n - If index: %d", devInfo.if_index);
         printf("\n - MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8
 			   " %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8,
-			addr.addr_bytes[0], addr.addr_bytes[1],
-			addr.addr_bytes[2], addr.addr_bytes[3],
-			addr.addr_bytes[4], addr.addr_bytes[5]);
+               addr.addr_bytes[0], addr.addr_bytes[1],
+               addr.addr_bytes[2], addr.addr_bytes[3],
+               addr.addr_bytes[4], addr.addr_bytes[5]);
 
         const struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(devInfo.device);
         if (pci_dev) {
@@ -79,21 +81,21 @@ int32_t populateNodeInfo(void) {
         }
 
         socketId = (devInfo.device->numa_node == -1) ? 0 : devInfo.device->numa_node;
-        numaNodeInfo[socketId].intfAvail = numaNodeInfo[socketId].intfAvail | (1 << i);
-        numaNodeInfo[socketId].intfTotal += 1;
+        numa_node_info[socketId].intfAvail = numa_node_info[socketId].intfAvail | (1 << i);
+        numa_node_info[socketId].intfTotal += 1;
         printf("\n");
     }
 
     /* allocate mempool for numa which has NIC interfaces */
     for (i = 0; i < GTP_MAX_NUMANODE; i++) {
-        if (likely(numaNodeInfo[i].intfAvail)) {
+        if (likely(numa_node_info[i].intfAvail)) {
             /* ToDo: per interface */
             uint8_t portIndex = 0;
             char mempoolName[25];
 
             /* create mempool for TX */
             sprintf(mempoolName, "mbuf_pool-%d-%d-tx", i, portIndex);
-            numaNodeInfo[i].tx[portIndex] = rte_mempool_create(
+            numa_node_info[i].tx[portIndex] = rte_mempool_create(
                 mempoolName, NB_MBUF,
                 MBUF_SIZE, 64,
                 sizeof(struct rte_pktmbuf_pool_private),
@@ -101,14 +103,14 @@ int32_t populateNodeInfo(void) {
                 rte_pktmbuf_init, NULL,
                 i, /*SOCKET_ID_ANY*/
                 0 /*MEMPOOL_F_SP_PUT*/);
-            if (unlikely(numaNodeInfo[i].tx[portIndex] == NULL)) {
+            if (unlikely(numa_node_info[i].tx[portIndex] == NULL)) {
                 rte_panic("\n ERROR: failed to get mem-pool for tx on node %d intf %d\n", i, portIndex);
                 exit(EXIT_FAILURE);
             }
 
             /* create mempool for RX */
             sprintf(mempoolName, "mbuf_pool-%d-%d-rx", i, portIndex);
-            numaNodeInfo[i].rx[portIndex] = rte_mempool_create(
+            numa_node_info[i].rx[portIndex] = rte_mempool_create(
                 mempoolName, NB_MBUF,
                 MBUF_SIZE, 64,
                 sizeof(struct rte_pktmbuf_pool_private),
@@ -116,7 +118,7 @@ int32_t populateNodeInfo(void) {
                 rte_pktmbuf_init, NULL,
                 i, /*SOCKET_ID_ANY*/
                 0 /*MEMPOOL_F_SP_PUT*/);
-            if (unlikely(numaNodeInfo[i].rx[portIndex] == NULL)) {
+            if (unlikely(numa_node_info[i].rx[portIndex] == NULL)) {
                 rte_panic("\n ERROR: failed to get mem-pool for rx on node %d intf %d\n", i, portIndex);
                 exit(EXIT_FAILURE);
             }
@@ -126,15 +128,17 @@ int32_t populateNodeInfo(void) {
     return 0;
 }
 
-int32_t interfaceSetup(void) {
+int32_t
+node_interface_setup(void)
+{
     uint8_t portIndex = 0, portCount = rte_eth_dev_count_avail();
     int32_t ret = 0, socket_id = -1;
 
     for (portIndex = 0; portIndex < portCount; portIndex++) {
         /* fetch the socket Id to which the port the mapped */
         for (ret = 0; ret < GTP_MAX_NUMANODE; ret++) {
-            if (numaNodeInfo[ret].intfTotal) {
-                if (numaNodeInfo[ret].intfAvail & (1 << portIndex)) {
+            if (numa_node_info[ret].intfTotal) {
+                if (numa_node_info[ret].intfAvail & (1 << portIndex)) {
                     socket_id = ret;
                     break;
                 }
@@ -148,7 +152,7 @@ int32_t interfaceSetup(void) {
         }
 
         ret = rte_eth_rx_queue_setup(portIndex, 0, RTE_TEST_RX_DESC_DEFAULT,
-                                     0, NULL, numaNodeInfo[socket_id].rx[0]);
+                                     0, NULL, numa_node_info[socket_id].rx[0]);
         if (unlikely(ret < 0)) {
             rte_panic("ERROR: Rx Queue Setup\n");
             return -2;

@@ -1,7 +1,7 @@
 #include "stats.h"
 
 /* GLOBAL */
-pkt_stats_t prtPktStats[GTP_CFG_MAX_PORTS] = {0};
+pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS] = {0};
 
 static struct rte_timer fetchStats;
 static struct rte_timer displayStats;
@@ -10,9 +10,11 @@ uint8_t doStatsDisplay = 1;
 
 /* EXTERN */
 extern app_confg_t app_config;
-extern numa_Info_t numaNodeInfo[GTP_MAX_NUMANODE];
+extern numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 
-void sigExtraStats(__attribute__((unused)) int signo) {
+void
+sigExtraStats(__attribute__((unused)) int signo)
+{
     int32_t i = 0, ports = rte_eth_dev_count_avail();
 
     doStatsDisplay = 0;
@@ -55,9 +57,9 @@ void sigExtraStats(__attribute__((unused)) int signo) {
         printf("\033[18;%dH", (15 + 10 * i));
         printf(" %8u ", i);
         printf("\033[20;%dH", (15 + 10 * i));
-        printf(" %8u ", numaNodeInfo[i].lcoreUsed);
+        printf(" %8u ", numa_node_info[i].lcoreUsed);
         printf("\033[21;%dH", (15 + 10 * i));
-        printf(" %8u ", numaNodeInfo[i].intfUsed);
+        printf(" %8u ", numa_node_info[i].intfUsed);
     }
 
     fflush(stdout);
@@ -69,7 +71,9 @@ void sigExtraStats(__attribute__((unused)) int signo) {
     return;
 }
 
-void sigConfig(__attribute__((unused)) int signo) {
+void
+sigConfig(__attribute__((unused)) int signo)
+{
 }
 
 void get_link_stats(__attribute__((unused)) struct rte_timer *t,
@@ -89,20 +93,20 @@ void get_link_stats(__attribute__((unused)) struct rte_timer *t,
             rx_currStat[i] = stats.ipackets;
             tx_currStat[i] = stats.opackets;
 
-            // prtPktStats[i].rxPkts = (rx_currStat[i] - rx_prevStat[i]);
-            // prtPktStats[i].txPkts = (tx_currStat[i] - tx_prevStat[i]);
-            prtPktStats[i].rxPkts = rx_currStat[i];
-            prtPktStats[i].txPkts = tx_currStat[i];
+            // port_pkt_stats[i].rxPkts = (rx_currStat[i] - rx_prevStat[i]);
+            // port_pkt_stats[i].txPkts = (tx_currStat[i] - tx_prevStat[i]);
+            port_pkt_stats[i].rxPkts = rx_currStat[i];
+            port_pkt_stats[i].txPkts = tx_currStat[i];
 
             // rx_prevStat[i] = stats.ipackets;
             // tx_prevStat[i] = stats.opackets;
 
-            prtPktStats[i].rxBytes = stats.ibytes / (1024 * 1024);
-            prtPktStats[i].txBytes = stats.obytes / (1024 * 1024);
-            prtPktStats[i].rxMissed = stats.imissed;
-            prtPktStats[i].rxErr = stats.ierrors;
-            prtPktStats[i].txErr = stats.oerrors;
-            prtPktStats[i].rxNoMbuff = stats.rx_nombuf;
+            port_pkt_stats[i].rxBytes = stats.ibytes / (1024 * 1024);
+            port_pkt_stats[i].txBytes = stats.obytes / (1024 * 1024);
+            port_pkt_stats[i].rxMissed = stats.imissed;
+            port_pkt_stats[i].rxErr = stats.ierrors;
+            port_pkt_stats[i].txErr = stats.oerrors;
+            port_pkt_stats[i].rxNoMbuff = stats.rx_nombuf;
         }
     }
 
@@ -123,80 +127,80 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
 
             /*PKTS_PER_SEC_RX*/
             printf("\033[5;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rxPkts);
+            printf("  %-12lu ", port_pkt_stats[i].rxPkts);
 
             /*PKTS_PER_SEC_TX*/
             printf("\033[6;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].txPkts);
+            printf("  %-12lu ", port_pkt_stats[i].txPkts);
 
             /*MB_RX*/
             printf("\033[7;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rxBytes);
+            printf("  %-12lu ", port_pkt_stats[i].rxBytes);
 
             /*MB_TX*/
             printf("\033[8;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].txBytes);
+            printf("  %-12lu ", port_pkt_stats[i].txBytes);
 
             /* INTF STATS */
             /* Drop */
             printf("\033[11;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].dropped);
+            printf("  %-12lu ", port_pkt_stats[i].dropped);
 
             /* RX miss */
             printf("\033[12;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rxMissed);
+            printf("  %-12lu ", port_pkt_stats[i].rxMissed);
 
             /* RX err */
             printf("\033[13;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rxErr);
+            printf("  %-12lu ", port_pkt_stats[i].rxErr);
 
             /* RX no mbuf */
             printf("\033[14;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rxNoMbuff);
+            printf("  %-12lu ", port_pkt_stats[i].rxNoMbuff);
 
             /* TX err */
             printf("\033[15;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].txErr);
+            printf("  %-12lu ", port_pkt_stats[i].txErr);
 
             /*GTPU_RX_IPV4*/
             printf("\033[18;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rx_gptu_ipv4);
+            printf("  %-12lu ", port_pkt_stats[i].rx_gptu_ipv4);
 
             /*GTPU_RX_IPV6*/
             printf("\033[19;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].rx_gptu_ipv6);
+            printf("  %-12lu ", port_pkt_stats[i].rx_gptu_ipv6);
 
             /*ERR NON IPV4*/
             printf("\033[22;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].non_ipv4);
+            printf("  %-12lu ", port_pkt_stats[i].non_ipv4);
 
             /*ERR NON UDP*/
             printf("\033[23;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].non_udp);
+            printf("  %-12lu ", port_pkt_stats[i].non_udp);
 
             /*ERR NON GTP*/
             printf("\033[24;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].non_gtp);
+            printf("  %-12lu ", port_pkt_stats[i].non_gtp);
 
             /*ERR GTP ver*/
             printf("\033[25;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].non_gtpVer);
+            printf("  %-12lu ", port_pkt_stats[i].non_gtpVer);
 
             /*ERR IP FRAG*/
             printf("\033[26;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].ipFrag);
+            printf("  %-12lu ", port_pkt_stats[i].ipFrag);
 
             /*ERR IP CSUM*/
             printf("\033[27;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].ipCsumErr);
+            printf("  %-12lu ", port_pkt_stats[i].ipCsumErr);
 
             /*ERR UDP CSUM*/
             printf("\033[28;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].udpCsumErr);
+            printf("  %-12lu ", port_pkt_stats[i].udpCsumErr);
 
             /*TX GTPU*/
             printf("\033[30;%dH", (15 + 10 * i));
-            printf("  %-12lu ", prtPktStats[i].tx_gptu);
+            printf("  %-12lu ", port_pkt_stats[i].tx_gptu);
         }
     }
 
@@ -204,7 +208,9 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
     return;
 }
 
-void show_static_display(void) {
+void
+show_static_display(void)
+{
     struct rte_eth_link link;
     int32_t i, ports = rte_eth_dev_count_avail();
 
@@ -333,7 +339,9 @@ void show_static_display(void) {
     return;
 }
 
-void set_stats_timer(void) {
+void
+set_stats_timer(void)
+{
     int32_t lcoreId = rte_get_master_lcore();
 
     rte_timer_subsystem_init();

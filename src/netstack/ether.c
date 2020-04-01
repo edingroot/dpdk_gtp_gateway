@@ -4,15 +4,18 @@
  */
 #include "ether.h"
 
-#include <rte_common.h>
+#include <stdio.h>
 #include <string.h>
+#include <rte_common.h>
 
 #include "arp.h"
-#include "stdio.h"
 
-struct Interface *InterfaceList = NULL;
+interface_t *iface_list = NULL;
+// unsigned char iface_hw_addr[MAX_INTERFACES][HW_ADDRESS_LEN];
 
-uint32_t GetIntAddFromChar(unsigned char *address, uint8_t order) {
+uint32_t
+int_addr_from_char(unsigned char *address, uint8_t order)
+{
     uint32_t ip_add = 0;
     int i;
     
@@ -34,53 +37,28 @@ uint32_t GetIntAddFromChar(unsigned char *address, uint8_t order) {
     return ip_add;
 }
 
-void SetInterfaceHW(uint8_t *MacAddr, uint8_t interface) {
-    printf("setting interface %u\n", interface);
-    if (interface < MAX_INTERFACES) {
-        memcpy(InterfaceHwAddr[interface], MacAddr, HW_ADDRESS_LEN);
-    } else {
-        printf("ERROR :: interfcae number more than max.\n");
-    }
-}
-
-void InitInterface(struct Interface *IfList[], unsigned int Count) {
-    struct Interface *ptr = NULL;
-    unsigned int i = 0;
-    for (i = 0; i < Count; i++) {
-        ptr = malloc(sizeof(struct Interface));
-        memcpy(ptr, IfList[i], sizeof(struct Interface));
-        ptr->next = NULL;
-        if (i == 0) {
-            InterfaceList = ptr;
-        } else {
-            InterfaceList->next = ptr;
-        }
-        uint32_t Ipv4Addr = GetIntAddFromChar(ptr->ip, 0);
-        //  ptr->ip[0] | ptr->ip[1] << 8 | ptr->ip[2] << 16 | ptr->ip[3] << 24 ;
-        //printf("assembled mac address = %x\n", Ipv4Addr);
-        add_mac(Ipv4Addr, ptr->hw_addr);
-    }
-}
-
-void AddInterface(struct Interface *Iface) {
-    struct Interface *ptr = NULL;
-    ptr = malloc(sizeof(struct Interface));
-    memcpy(ptr, Iface, sizeof(struct Interface));
+void
+add_interface(interface_t *iface)
+{
+    interface_t *ptr = malloc(sizeof(interface_t));
+    
+    memcpy(ptr, iface, sizeof(interface_t));
     ptr->next = NULL;
-    if (InterfaceList == NULL) {
-        InterfaceList = ptr;
+
+    if (iface_list == NULL) {
+        iface_list = ptr;
     } else {
-        InterfaceList->next = ptr;
+        iface_list->next = ptr;
     }
-    uint32_t Ipv4Addr = GetIntAddFromChar(ptr->ip, 0);
-    //  ptr->ip[0] | ptr->ip[1] << 8 | ptr->ip[2] << 16 | ptr->ip[3] << 24 ;
-    //printf("assembled mac address = %x\n", Ipv4Addr);
-    add_mac(Ipv4Addr, ptr->hw_addr);
+
+    add_mac(ptr->ipv4_addr, ptr->hw_addr);
 }
 
-uint8_t GetInterfaceMac(uint8_t iface_num, uint8_t *mac) {
-    struct Interface *temp = NULL;
-    temp = InterfaceList;
+uint8_t
+get_interface_mac(uint8_t iface_num, uint8_t *mac)
+{
+    interface_t *temp = NULL;
+    temp = iface_list;
 
     while (temp && (temp->iface_num != iface_num)) {
         temp = temp->next;
@@ -90,5 +68,18 @@ uint8_t GetInterfaceMac(uint8_t iface_num, uint8_t *mac) {
         memcpy(mac, temp->hw_addr, 6);
         return 1;
     }
+
     return 0;
 }
+
+// void
+// set_interface_hw(uint8_t *mac_addr, uint8_t interface)
+// {
+//     printf("Setting interface %u\n", interface);
+
+//     if (interface < MAX_INTERFACES) {
+//         memcpy(iface_hw_addr[interface], mac_addr, HW_ADDRESS_LEN);
+//     } else {
+//         printf("ERROR :: interfcae number more than max.\n");
+//     }
+// }

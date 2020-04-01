@@ -6,6 +6,9 @@
 #define __ARP_H_
 
 #include <rte_common.h>
+#include <rte_ether.h>
+
+#include "logger.h"
 
 typedef enum {
     ARP_REQ = 1,
@@ -49,24 +52,27 @@ struct rte_mbuf_queue {
 };
 
 struct arp_entry {
-    unsigned char pr_address[4];
-    unsigned char hw_address[6];
+    // unsigned char pr_addr[4];
+    unsigned char hw_addr[RTE_ETHER_ADDR_LEN];
     uint16_t ttl;
     uint8_t tries;
     arp_state state;
     struct rte_mbuf_queue *queue;
 };
 
-void swapvalue(char *add1, char *add2, int len);
-int get_arp_table(char *buffer, int len);
-void send_arp(struct arp *arp_pkt);
-int print_add_in_buf(uint32_t ip_add, char *buffer);
 int arp_in(struct rte_mbuf *mbuf);
+
 int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
+int get_arp_table(char *buffer, int len);
+
 int send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add);
-int send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add);
-void print_add(uint32_t ip_add);
-void print_arp_table(void);
+int send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add);
+void send_arp(struct arp *arp_pkt);
+
+void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);
+int print_ipv4_in_buf(uint32_t ip_add, char *buffer);
+void print_arp_table(TraceLevel trace_level);
+void print_mac(unsigned char *mac_addr, TraceLevel trace_level);
 
 #endif /* __ARP_H_ */

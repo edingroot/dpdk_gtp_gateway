@@ -35,12 +35,13 @@
 
 #define CFG_VAL_GTPU        0x01
 
-#define STRCPY(x, y) strpy((char *)x, (const char *)y)
+#define STRCPY(x, y) strcpy((char *)x, (const char *)y)
 #define STRCMP(x, y) strcmp((const char *)x, (const char *)y)
 #define STRNCMP(x, y, n) strncmp((const char *)x, (const char *)y, n)
 
 typedef struct confg_gtp_port_s {
-    uint8_t port_index;
+    uint8_t port_num;
+    char ipv4[INET_ADDRSTRLEN];
     uint8_t gtp_type;
     uint8_t pkt_index;
 } confg_gtp_port_t;

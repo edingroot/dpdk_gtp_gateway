@@ -10,33 +10,33 @@ struct LoggerFeature *LogFeature;
 void
 logger_init(void)
 {
-    LogFeature = calloc(LOG_ALL_FEATURES, sizeof(struct LoggerFeature));
-    logger_enable_trace(LOG_APP, ALL);
-    logger_enable_trace(LOG_ARP, ALL);
-    logger_enable_trace(LOG_ETHER, ALL);
-    logger_enable_trace(LOG_LIB, ALL);
+    LogFeature = calloc(LOG_ALL_FeatureS, sizeof(struct LoggerFeature));
+    logger_enable_trace(LOG_APP, L_ALL);
+    logger_enable_trace(LOG_ARP, L_ALL);
+    logger_enable_trace(LOG_ETHER, L_ALL);
+    logger_enable_trace(LOG_LIB, L_ALL);
 }
 
 void
-logger_enable_trace(FEATURE feature, TRACE_LEVEL Level)
+logger_enable_trace(Feature feature, TraceLevel level)
 {
-    LogFeature[feature].Enable = 1;
-    LogFeature[feature].Level = Level;
+    LogFeature[feature].enable = 1;
+    LogFeature[feature].level = level;
 }
 
 void
-log_print(FEATURE feature, TRACE_LEVEL Level, const char *format, ...)
+log_print(Feature feature, TraceLevel level, const char *format, ...)
 {
     va_list(arglist);
 
-    if ((LogFeature[feature].Enable == 1) && (LogFeature[feature].Level >= Level)) {
+    if ((LogFeature[feature].enable == 1) && (LogFeature[feature].level >= level)) {
         // FILE *fd = fopen(LOG_FILE, "a");
         FILE *fd = stdout;
         va_start(arglist, format);
 
         // vfprintf(fd, "Log feature %d ---- ", feature);
         vfprintf(fd, format, arglist);
-        fprintf(fd, "\n");
+        // fprintf(fd, "\n");
 
         va_end(arglist);
         // fclose(fd);

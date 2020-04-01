@@ -48,27 +48,30 @@ load_global_entries(struct rte_cfgfile *file)
 }
 
 static int 
-load_intf_entries(struct rte_cfgfile *file, int32_t idx, const char *section_name)
+load_intf_entries(struct rte_cfgfile *file, const char *section_name)
 {
-    int32_t j = 0, ret = -1;
+    int32_t j = 0, idx, ret = -1;
     struct rte_cfgfile_entry entries[32];
     
     ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
-    app_config.gtp_ports[idx].port_index = get_int(section_name + strlen(GTP_CFG_TAG_INTF));
+    idx = get_int(section_name + strlen(GTP_CFG_TAG_INTF));
+    app_config.gtp_ports[idx].port_num = idx;
 
     for (j = 0; j < ret; j++) {
         printf("\n %15s : %-15s", entries[j].name, entries[j].value);
 
         switch (strlen(entries[j].name)) {
             case 4:
-                if (STRCMP("type", entries[j].name)) {
+                if (STRCMP("ipv4", entries[j].name) == 0) {
+                    STRCPY(app_config.gtp_ports[idx].ipv4, entries[j].value);
+                } else if (STRCMP("type", entries[j].name) == 0) {
                     app_config.gtp_ports[idx].gtp_type = 
                         (STRCMP("GTPU", entries[j].value) == 0) ? CFG_VAL_GTPU : 0xff;
                 }
                 break;
 
             case 5:
-                if (STRCMP("index", entries[j].name))
+                if (STRCMP("index", entries[j].name) == 0)
                     app_config.gtp_ports[idx].pkt_index = atoi(entries[j].value);
                 break;
 
@@ -82,7 +85,9 @@ load_intf_entries(struct rte_cfgfile *file, int32_t idx, const char *section_nam
     return 0;
 }
 
-int32_t load_gtp_config(void) {
+int32_t
+load_gtp_config(void)
+{
     struct rte_cfgfile *file = NULL;
     int32_t i = 0, ret;
     char **section_names = NULL;
@@ -117,7 +122,7 @@ int32_t load_gtp_config(void) {
             ret = load_global_entries(file);
             assert(ret == 0);
         } else if (STRNCMP(GTP_CFG_TAG_INTF, section_names[i], strlen(GTP_CFG_TAG_INTF)) == 0) {
-            ret = load_intf_entries(file, i, section_names[i]);
+            ret = load_intf_entries(file, section_names[i]);
             assert(ret == 0);
         }
     } /* per section */

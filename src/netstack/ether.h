@@ -6,23 +6,24 @@
 #define __EHTER_H_
 
 #include <rte_common.h>
-#define HW_ADDRESS_LEN 6
+#include <rte_ether.h>
+
 #define MAX_INTERFACES 10
 
-struct Interface {
-    unsigned char hw_addr[HW_ADDRESS_LEN];
+typedef struct interface_s {
     uint8_t iface_num;
-    unsigned char ip[4];
-    struct Interface *next;
-};
+    unsigned char hw_addr[RTE_ETHER_ADDR_LEN];
+    uint32_t ipv4_addr;
+    struct interface_s *next;
+} interface_t;
 
-unsigned char InterfaceHwAddr[MAX_INTERFACES][HW_ADDRESS_LEN];
-uint32_t GetIntAddFromChar(unsigned char *address, uint8_t order);
+/**
+ * @param address e.g. {"192", "168", "0", "1"}
+ */
+uint32_t int_addr_from_char(unsigned char *address, uint8_t order);
 
-uint8_t GetInterfaceMac(uint8_t iface_num, uint8_t *mac);
-void AddInterface(struct Interface *Iface);
-void SetInterfaceHW(uint8_t *MacAddr, uint8_t interface);
-void InitInterface(struct Interface *IfList[], unsigned int Count);
+void add_interface(interface_t *iface);
+uint8_t get_interface_mac(uint8_t iface_num, uint8_t *mac);
+// void set_interface_hw(uint8_t *mac_addr, uint8_t interface);
 
-extern struct Interface *InterfaceList;
 #endif /* __EHTER_H_ */
