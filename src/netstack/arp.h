@@ -68,7 +68,7 @@ int get_arp_table(char *buffer, int len);
 
 int send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add);
 int send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add);
-int send_arp(struct arp *arp_pkt);
+int send_arp(struct arp *arp_pkt, uint8_t port);
 
 void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);
 int print_ipv4_in_buf(uint32_t ip_add, char *buffer);

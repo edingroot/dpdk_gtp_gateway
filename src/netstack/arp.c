@@ -177,7 +177,7 @@ send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add)
     memcpy(arp_reply->dst_hw_add, dest_mac, HW_LEN_ETHER);
     memcpy(arp_reply->src_pr_add, src_pr_add, PR_LEN_IPV4);
     memcpy(arp_reply->dst_pr_add, dst_pr_add, PR_LEN_IPV4);
-    send_arp(arp_reply);
+    send_arp(arp_reply, temp->iface_num);
 
     return 0;
 }
@@ -222,14 +222,14 @@ send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned c
     print_mac(arp_reply->dst_hw_add, L_DEBUG);
     logger_s(LOG_ARP, L_DEBUG, "\n");
 
-    send_arp(arp_reply);
+    send_arp(arp_reply, temp->iface_num);
 
     free(arp_reply);
     return 0;
 }
 
 int
-send_arp(struct arp *arp_pkt)
+send_arp(struct arp *arp_pkt, uint8_t port)
 {
     // logger(LOG_ARP, L_DEBUG, "Sending arp packet\n");
     struct rte_mbuf *mbuf = get_mbuf();
@@ -262,9 +262,8 @@ send_arp(struct arp *arp_pkt)
     }
 
     // TODO: fix the below, port should be dfrom routing
-    const int port_id = 0;
     const int queue_id = 0;
-    const uint16_t total_packets_sent = rte_eth_tx_burst(port_id, queue_id, &mbuf, 1);
+    const uint16_t total_packets_sent = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
     assert(likely(total_packets_sent == 1));
     return 0;
 }
