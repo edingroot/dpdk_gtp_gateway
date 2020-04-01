@@ -187,17 +187,20 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
     gtpv1_t *gtp1_hdr = NULL;
     
     eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+    // printf("\n [RX] Port#%u Ether(type:%x dst mac: %x:%x:%x:%x:%x:%x) ",
+    //     m->port, eth_hdr->ether_type,
+    //     eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
+    //     eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
+    //     eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5]);
 
-    // printf("\n [RX] ether(type:%x)", eth_hdr->ether_type);
     // Ether type: IPv4 (0x8)
     if (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) {
-        // printf(" IPv4(dst mac: %x:%x:%x:%x:%x:%x port#%u) ",
-        //     eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
-        //     eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
-        //     eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5],
-        //     m->port);
-
         ip_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1));
+        // printf(" IPv4(");
+        // print_rte_ipv4(ip_hdr->src_addr);
+        // printf(" -> ");
+        // print_rte_ipv4(ip_hdr->dst_addr);
+        // printf(") ");
 
         // Check IP is fragmented
         if (unlikely(rte_ipv4_frag_pkt_is_fragmented(ip_hdr))) {
@@ -207,10 +210,10 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         }
 
         // Check for UDP
-        // printf("\n protocol: %x\n", ip_hdr->next_proto_id);
+        // printf(" protocol: %x ", ip_hdr->next_proto_id);
         if (likely(ip_hdr->next_proto_id == 0x11)) {
             udp_hdr = (struct rte_udp_hdr *)((char *)(ip_hdr + 1));
-            // printf(" udp port(src:%d dst:%d) ", 
+            // printf(" UDP(port src:%d dst:%d) ", 
             //     rte_cpu_to_be_16(udp_hdr->src_port), 
             //     rte_cpu_to_be_16(udp_hdr->dst_port));
 
@@ -218,9 +221,7 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
             if (likely(udp_hdr->src_port == 0x6808 || 
                         udp_hdr->dst_port == 0x6808)) {
                 gtp1_hdr = (gtpv1_t *)((char *)(udp_hdr + 1));
-
-                // printf(" gtpu(ver:%d type:%d) ", 
-                //     gtp1_hdr->vr, gtp1_hdr->msgType);
+                // printf(" GTP-U(ver:%d type:%d) ", gtp1_hdr->vr, gtp1_hdr->type);
 
                 // Check if gtp version is 1
                 if (unlikely(gtp1_hdr->vr != 1)) {
@@ -231,14 +232,14 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
                 }
 
                 // Check if msg type is PDU
-                if (unlikely(gtp1_hdr->msgType != 0xff)) {
-                    printf(" DROP(gtp1_hdr->msgType:%d)\n", gtp1_hdr->msgType);
+                if (unlikely(gtp1_hdr->type != 0xff)) {
+                    printf(" DROP(gtp1_hdr->type:%d)\n", gtp1_hdr->type);
                     port_pkt_stats[port].dropped += 1;
                     rte_pktmbuf_free(m);
                     return;
                 }
 
-                if (likely(process_gtpv1(m, port, ip_hdr, udp_hdr) > 0)) {
+                if (likely(process_gtpv1(m, port, eth_hdr, ip_hdr, gtp1_hdr) > 0)) {
                     return;
                 }
             } else {
