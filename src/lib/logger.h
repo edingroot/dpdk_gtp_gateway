@@ -14,7 +14,7 @@ typedef enum {
     LOG_ARP,
     LOG_ETHER,
     LOG_LIB,
-    LOG_ALL_FeatureS,
+    LOG_ALL_Features,
 } Feature;
 
 typedef enum {
@@ -30,13 +30,13 @@ struct LoggerFeature {
     uint8_t enable;
 };
 
-extern struct LoggerFeature *LogFeature;
+extern struct LoggerFeature *enable_feature;
 void logger_init(void);
 void logger_enable_trace(Feature feature, TraceLevel level);
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define logger printf("[Log] %s:%d(%s) :: ", __FILENAME__, __LINE__, __func__); log_print
 
-void log_print(Feature feature, TraceLevel level, const char *format, ...);
+void logger(Feature feature, TraceLevel level, const char *format, ...);
+void logger_s(Feature feature, TraceLevel level, const char *format, ...);
 
 #endif /* __LOGGER_H_ */

@@ -118,13 +118,12 @@ add_interfaces(void)
     for (i = 0; i < rte_eth_dev_count_avail(); i++) {
         interface_t iface;
         rte_eth_macaddr_get(i, &addr);
-
+        
         iface.iface_num = i;
         iface.ipv4_addr = htonl(inet_addr(app_config.gtp_ports[i].ipv4));
         memcpy(iface.hw_addr, addr.addr_bytes, sizeof(iface.hw_addr));
 
         add_interface(&iface);
-        // add_mac(htonl(inet_addr(app_config.gtp_ports[i].ipv4)), addr.addr_bytes);
     }
 }
 

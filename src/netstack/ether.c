@@ -18,11 +18,6 @@ int_addr_from_char(unsigned char *address, uint8_t order)
 {
     uint32_t ip_add = 0;
     int i;
-    
-    // printf("Converting address for ");
-    // for (i = 0; i < 4; i++) {
-    //     printf("%d ", address[i]);
-    // }
 
     for (i = 0; i < 4; i++) {
         ip_add = ip_add << 8;
