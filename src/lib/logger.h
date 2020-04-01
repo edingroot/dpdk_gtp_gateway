@@ -13,6 +13,7 @@ typedef enum {
     LOG_APP,
     LOG_ARP,
     LOG_ETHER,
+    LOG_GTP,
     LOG_LIB,
     LOG_ALL_Features,
 } Feature;

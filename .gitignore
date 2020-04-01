@@ -1,6 +1,7 @@
 build/
-DevDocs/
-
 *.o*
 
+gtp_config.ini
+
+DevDocs/
 .vscode/

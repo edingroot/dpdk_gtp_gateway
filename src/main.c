@@ -177,8 +177,8 @@ pkt_handler(void *arg)
     return 0;
 }
 
-static
-inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
+static __rte_always_inline void
+process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
 {
     struct rte_ether_hdr *eth_hdr = NULL;
     struct rte_ipv4_hdr *ip_hdr = NULL;
@@ -188,10 +188,10 @@ inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
     
     eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-    // printf("\n[RX] ether type : %x", eth_hdr->ether_type);
+    // printf("\n [RX] ether(type:%x)", eth_hdr->ether_type);
     // Ether type: IPv4 (0x8)
     if (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) {
-        // printf("\n dst MAC: %x:%x:%x:%x:%x:%x port %u ",
+        // printf(" IPv4(dst mac: %x:%x:%x:%x:%x:%x port#%u) ",
         //     eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
         //     eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
         //     eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5],
@@ -210,24 +210,31 @@ inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         // printf("\n protocol: %x\n", ip_hdr->next_proto_id);
         if (likely(ip_hdr->next_proto_id == 0x11)) {
             udp_hdr = (struct rte_udp_hdr *)((char *)(ip_hdr + 1));
-            // printf("\n Port src: %x dst: %x\n", udp_hdr->src_port, udp_hdr->dst_port);
+            // printf(" udp port(src:%d dst:%d) ", 
+            //     rte_cpu_to_be_16(udp_hdr->src_port), 
+            //     rte_cpu_to_be_16(udp_hdr->dst_port));
 
             /* GTPU LTE carries V1 only 2152*/
             if (likely(udp_hdr->src_port == 0x6808 || 
                         udp_hdr->dst_port == 0x6808)) {
                 gtp1_hdr = (gtpv1_t *)((char *)(udp_hdr + 1));
 
+                // printf(" gtpu(ver:%d type:%d) ", 
+                //     gtp1_hdr->vr, gtp1_hdr->msgType);
+
                 // Check if gtp version is 1
                 if (unlikely(gtp1_hdr->vr != 1)) {
+                    printf(" NonGTPVer(gtp1_hdr->vr:%d)\n", gtp1_hdr->vr);
                     port_pkt_stats[port].non_gtpVer += 1;
-                    rte_free(m);
+                    rte_pktmbuf_free(m);
                     return;
                 }
 
                 // Check if msg type is PDU
-                if (unlikely(gtp1_hdr->msgType == 0xff)) {
+                if (unlikely(gtp1_hdr->msgType != 0xff)) {
+                    printf(" DROP(gtp1_hdr->msgType:%d)\n", gtp1_hdr->msgType);
                     port_pkt_stats[port].dropped += 1;
-                    rte_free(m);
+                    rte_pktmbuf_free(m);
                     return;
                 }
 

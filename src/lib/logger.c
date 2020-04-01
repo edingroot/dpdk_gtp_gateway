@@ -14,8 +14,9 @@ logger_init(void)
     memset(enable_feature, 0, sizeof(struct LoggerFeature));
 
     logger_enable_trace(LOG_APP, L_ALL);
-    logger_enable_trace(LOG_ARP, L_ALL);
+    // logger_enable_trace(LOG_ARP, L_ALL);
     // logger_enable_trace(LOG_ETHER, L_ALL);
+    logger_enable_trace(LOG_GTP, L_ALL);
     // logger_enable_trace(LOG_LIB, L_ALL);
 }
 
