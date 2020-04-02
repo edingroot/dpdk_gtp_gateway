@@ -14,7 +14,7 @@ logger_init(void)
     memset(enable_feature, 0, sizeof(struct LoggerFeature));
 
     logger_enable_trace(LOG_APP, L_ALL);
-    // logger_enable_trace(LOG_ARP, L_ALL);
+    logger_enable_trace(LOG_ARP, L_ALL);
     // logger_enable_trace(LOG_ETHER, L_ALL);
     logger_enable_trace(LOG_GTP, L_ALL);
     // logger_enable_trace(LOG_LIB, L_ALL);
@@ -25,15 +25,6 @@ logger_enable_trace(Feature feature, TraceLevel level)
 {
     enable_feature[feature].enable = 1;
     enable_feature[feature].level = level;
-}
-
-void
-logger(Feature feature, TraceLevel level, const char *format, ...)
-{
-    if (enable_feature[feature].enable && enable_feature[feature].level >= level) {
-        printf("[Log] %s:%d(%s) :: ", __FILENAME__, __LINE__, __func__);
-        logger_s(feature, level, format);
-    }
 }
 
 void

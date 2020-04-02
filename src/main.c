@@ -6,13 +6,14 @@
 #include <rte_bus_pci.h>
 
 #include "logger.h"
+#include "pktbuf.h"
+#include "netstack/arp.h"
+#include "netstack/ether.h"
+
 #include "config.h"
 #include "node.h"
 #include "stats.h"
 #include "gtp_process.h"
-#include "pktbuf.h"
-#include "netstack/arp.h"
-#include "netstack/ether.h"
 
 /* DEFINES */
 #define MAX_RX_BURST_COUNT 8
@@ -120,7 +121,7 @@ add_interfaces(void)
         rte_eth_macaddr_get(i, &addr);
         
         iface.iface_num = i;
-        iface.ipv4_addr = htonl(inet_addr(app_config.gtp_ports[i].ipv4));
+        iface.ipv4_addr = inet_addr(app_config.gtp_ports[i].ipv4);
         memcpy(iface.hw_addr, addr.addr_bytes, sizeof(iface.hw_addr));
 
         add_interface(&iface);
@@ -239,7 +240,8 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
                     return;
                 }
 
-                if (likely(process_gtpv1(m, port, eth_hdr, ip_hdr, gtp1_hdr) > 0)) {
+                // GTP decap / forward
+                if (likely(process_gtpv1(m, port, ip_hdr, gtp1_hdr) > 0)) {
                     return;
                 }
             } else {
@@ -248,6 +250,11 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         } else {
             port_pkt_stats[port].non_udp += 1;
         } /* (unlikely(ip_hdr->next_proto_id != 0x11)) */
+
+        // GTP encap
+        if (likely(process_ipv4(m, port, ip_hdr) > 0)) {
+            return;
+        }
 
     } else {
         port_pkt_stats[port].non_ipv4 += 1;

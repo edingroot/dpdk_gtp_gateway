@@ -1,6 +1,6 @@
 /**
  * ether.h
- *  reference: https://github.com/vipinpv85/GTP_PKT_DECODE
+ *  ref: https://github.com/rajneshrat/dpdk-tcpipstack
  */
 #ifndef __EHTER_H_
 #define __EHTER_H_
@@ -13,7 +13,7 @@
 typedef struct interface_s {
     uint8_t iface_num;
     unsigned char hw_addr[RTE_ETHER_ADDR_LEN];
-    uint32_t ipv4_addr;
+    uint32_t ipv4_addr; // host format (before htonl)
     struct interface_s *next;
 } interface_t;
 
@@ -24,6 +24,6 @@ uint32_t int_addr_from_char(unsigned char *address, uint8_t order);
 
 void add_interface(interface_t *iface);
 uint8_t get_interface_mac(uint8_t iface_num, uint8_t *mac);
-// void set_interface_hw(uint8_t *mac_addr, uint8_t interface);
+void set_interface_hw(uint8_t iface_num, uint8_t *mac_addr);
 
 #endif /* __EHTER_H_ */

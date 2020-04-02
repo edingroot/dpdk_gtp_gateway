@@ -1,6 +1,6 @@
 /**
  * logger.h
- *  reference: https://github.com/vipinpv85/GTP_PKT_DECODE
+ *  ref: https://github.com/rajneshrat/dpdk-tcpipstack
  */
 #ifndef __LOGGER_H_
 #define __LOGGER_H_
@@ -37,7 +37,12 @@ void logger_enable_trace(Feature feature, TraceLevel level);
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-void logger(Feature feature, TraceLevel level, const char *format, ...);
+#define logger(_feature, _level, ...) \
+    if (enable_feature[_feature].enable && enable_feature[_feature].level >= _level) { \
+        printf("[Log] %s:%d(%s) :: ", __FILENAME__, __LINE__, __func__); \
+        logger_s(_feature, _level, __VA_ARGS__); \
+    }
+
 void logger_s(Feature feature, TraceLevel level, const char *format, ...);
 
 #endif /* __LOGGER_H_ */
