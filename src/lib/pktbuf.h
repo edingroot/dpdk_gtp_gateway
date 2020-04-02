@@ -10,7 +10,6 @@
 int
 mbuf_init(void);
 
-struct rte_mbuf*
-get_mbuf(void);
+struct rte_mbuf *get_mbuf(void);
 
 #endif /* __MBUF_H_ */

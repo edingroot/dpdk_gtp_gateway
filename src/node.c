@@ -9,18 +9,16 @@ numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 
 static const struct rte_eth_conf portConf = {
     .rxmode = {
-        .split_hdr_size = 0,
-        .offloads = 0,
-        // .header_split   = 0, /**< Header Split disabled */
-        // .hw_ip_checksum = 0, /**< IP checksum offload disabled */
+        // .offloads = DEV_RX_OFFLOAD_CHECKSUM,
+        .split_hdr_size   = 0, /**< Header Split disabled */
         // .hw_vlan_filter = 0, /**< VLAN filtering disabled */
         // .jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
         // .hw_strip_crc   = 0, /**< CRC stripped by hardware */
     },
     .txmode = {
         .mq_mode = ETH_MQ_TX_NONE,
-        .offloads = DEV_RX_OFFLOAD_IPV4_CKSUM | 
-                    DEV_RX_OFFLOAD_UDP_CKSUM,
+        .offloads = DEV_TX_OFFLOAD_IPV4_CKSUM | 
+                    DEV_TX_OFFLOAD_UDP_CKSUM,
     },
 };
 

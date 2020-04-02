@@ -1,6 +1,7 @@
 #ifndef __HELPER_H_
 #define __HELPER_H_
 
+#include <arpa/inet.h>
 #include <rte_common.h>
 #include <rte_ethdev.h>
 

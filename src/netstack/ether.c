@@ -11,7 +11,7 @@
 #include "arp.h"
 
 interface_t *iface_list = NULL;
-unsigned char iface_hw_addr[MAX_INTERFACES][RTE_ETHER_ADDR_LEN];
+interface_t *num_iface_map[MAX_INTERFACES] = {0};
 
 uint32_t
 int_addr_from_char(unsigned char *address, uint8_t order)
@@ -40,34 +40,11 @@ add_interface(interface_t *iface)
         iface_list->next = ptr;
     }
 
-    add_mac(ptr->ipv4_addr, ptr->hw_addr);
-    set_interface_hw(ptr->iface_num, ptr->hw_addr);
-}
-
-uint8_t
-get_interface_mac(uint8_t iface_num, uint8_t *mac)
-{
-    interface_t *temp = NULL;
-    temp = iface_list;
-
-    while (temp && (temp->iface_num != iface_num)) {
-        temp = temp->next;
-    }
-
-    if (temp) {
-        memcpy(mac, temp->hw_addr, 6);
-        return 1;
-    }
-
-    return 0;
-}
-
-void
-set_interface_hw(uint8_t iface_num, uint8_t *mac_addr)
-{
-    if (iface_num + 1 < MAX_INTERFACES) {
-        memcpy(iface_hw_addr[iface_num], mac_addr, RTE_ETHER_ADDR_LEN);
+    if (ptr->iface_num + 1 < MAX_INTERFACES) {
+        num_iface_map[ptr->iface_num] = ptr;
     } else {
         printf("ERROR :: interface number more than max\n");
     }
+
+    add_mac(ptr->ipv4_addr, ptr->hw_addr);
 }

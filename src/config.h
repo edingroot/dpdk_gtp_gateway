@@ -26,8 +26,10 @@
 /* D E F I N E S */   
 #define GTP_CFG_FILE        "gtp_config.ini"
 #define GTP_CFG_MAX_KEYLEN  15
-#define GTP_CFG_MAX_PORTS   8
 #define GTP_CFG_TAG_INTF    "INTF_"
+#define GTP_CFG_MAX_PORTS   10
+#define GTP_CFG_TAG_TUNNEL  "TUNNEL_"
+#define GTP_CFG_MAX_TUNNELS 100
 
 #define GTP_MAX_NUMANODE    4
 #define GTP_MAX_LCORECOUNT  32
@@ -41,17 +43,30 @@
 
 typedef struct confg_gtp_port_s {
     uint8_t port_num;
-    char ipv4[INET_ADDRSTRLEN];
+    // char ipv4[INET_ADDRSTRLEN];
+    uint32_t ipv4; // host format (before htonl)
     uint8_t gtp_type;
     uint8_t pkt_index;
 } confg_gtp_port_t;
 
+typedef struct confg_gtp_tunnel_s {
+    uint8_t id;
+    uint32_t teid_in;
+    uint32_t teid_out;
+    uint32_t ue_ipv4; // host format (before htonl)
+    uint32_t ran_ipv4; // host format (before htonl)
+} confg_gtp_tunnel_t;
+
 typedef struct app_confg_s {
     uint8_t disp_stats;
-    uint8_t gtp_ports_count;
+    uint8_t gtp_port_count;
     confg_gtp_port_t gtp_ports[GTP_CFG_MAX_PORTS];
+    uint8_t gtp_tunnel_count;
+    confg_gtp_tunnel_t gtp_tunnels[GTP_CFG_MAX_TUNNELS];
 } app_confg_t;
 
 int32_t load_gtp_config(void);
+
+confg_gtp_tunnel_t *find_tunnel_by_ue_ipv4(uint32_t ue_ipv4);
 
 #endif /*__CONFIG_H__*/

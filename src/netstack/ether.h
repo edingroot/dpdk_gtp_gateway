@@ -23,7 +23,6 @@ typedef struct interface_s {
 uint32_t int_addr_from_char(unsigned char *address, uint8_t order);
 
 void add_interface(interface_t *iface);
-uint8_t get_interface_mac(uint8_t iface_num, uint8_t *mac);
 void set_interface_hw(uint8_t iface_num, uint8_t *mac_addr);
 
 #endif /* __EHTER_H_ */

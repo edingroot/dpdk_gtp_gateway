@@ -40,24 +40,22 @@ struct arp {
     unsigned char dst_pr_add[PR_LEN_IPV4];
 } __attribute__((__packed__));
 
-struct arp_map {
+struct arp_entry {
     uint32_t ipv4_addr; // host format (before htonl)
     unsigned char mac_addr[RTE_ETHER_ADDR_LEN];
-    struct arp_map *next;
+    struct arp_entry *next;
 };
 
 int arp_in(struct rte_mbuf *mbuf);
 
 int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
-int get_arp_table(char *buffer, int len);
 
 int send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add);
 int send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add);
 int send_arp(struct arp *arp_pkt, uint8_t port);
 
 void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);
-int print_ipv4_in_buf(uint32_t ip_add, char *buffer);
 void print_arp_table(TraceLevel trace_level);
 void print_mac(unsigned char *mac_addr, TraceLevel trace_level);
 

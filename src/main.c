@@ -1,6 +1,3 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <assert.h>
 #include <rte_ip_frag.h>
 #include <rte_bus_pci.h>
@@ -26,9 +23,9 @@ extern app_confg_t app_config;
 extern numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 extern pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS];
 
-void add_interfaces(void);
-static int pkt_handler(void *arg);
-static inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port);
+static void add_interfaces(void);
+static __rte_always_inline int pkt_handler(void *arg);
+static __rte_always_inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port);
 
 int
 main(int argc, char **argv) {
@@ -104,16 +101,16 @@ main(int argc, char **argv) {
     return 0;
 }
 
-void
+static void
 add_interfaces(void)
 {
     int32_t i;
     struct rte_ether_addr addr;
 
-    if (app_config.gtp_ports_count != rte_eth_dev_count_avail()) {
+    if (app_config.gtp_port_count != rte_eth_dev_count_avail()) {
         logger(LOG_APP, L_CRITICAL, 
             "Number of interface in config (%d) does not match avail dpdk eth dev (%d)\n", 
-            app_config.gtp_ports_count, rte_eth_dev_count_avail());
+            app_config.gtp_port_count, rte_eth_dev_count_avail());
     }
     
     for (i = 0; i < rte_eth_dev_count_avail(); i++) {
@@ -121,28 +118,27 @@ add_interfaces(void)
         rte_eth_macaddr_get(i, &addr);
         
         iface.iface_num = i;
-        iface.ipv4_addr = inet_addr(app_config.gtp_ports[i].ipv4);
+        iface.ipv4_addr = app_config.gtp_ports[i].ipv4;
         memcpy(iface.hw_addr, addr.addr_bytes, sizeof(iface.hw_addr));
 
         add_interface(&iface);
     }
 }
 
-static int
+static __rte_always_inline int
 pkt_handler(void *arg)
 {
     uint8_t port = *((uint8_t *)arg);
-    unsigned lcore_id, socket_id;
     int32_t j, nb_rx;
-
+    unsigned lcore_id, socket_id;
     struct rte_mbuf *ptr[MAX_RX_BURST_COUNT], *m = NULL;
 
     lcore_id = rte_lcore_id();
     socket_id = rte_lcore_to_socket_id(lcore_id);
 
     // TODO: if mempool is per port ignore the below
-    //mbuf_pool_tx = numa_node_info[socket_id].tx[0];
-    //mbuf_pool_rx = numa_node_info[socket_id].rx[port];
+    // mbuf_pool_tx = numa_node_info[socket_id].tx[0];
+    // mbuf_pool_rx = numa_node_info[socket_id].rx[port];
 
     printf("\n Launched handler for port %d on socket %d \n", port, socket_id);
     fflush(stdout);
@@ -152,27 +148,26 @@ pkt_handler(void *arg)
         nb_rx = rte_eth_rx_burst(port, 0, ptr, MAX_RX_BURST_COUNT);
 
         if (likely(nb_rx)) {
-            // rte_pktmbuf_dump (stdout, ptr[0], 64);
+            // rte_pktmbuf_dump(stdout, ptr[0], 64);
 
             // Prefetch packets for pipeline
             for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
                 rte_prefetch0(rte_pktmbuf_mtod(ptr[j], void *));
             }
 
+            // Prefetch others packets and process packets
             for (j = 0; j < nb_rx - PREFETCH_OFFSET; j++) {
                 m = ptr[j];
-
-                // Prefetch others packets
                 rte_prefetch0(rte_pktmbuf_mtod(ptr[j + PREFETCH_OFFSET], void *));
-
                 process_pkt_mbuf(m, port);
             }
 
+            // Process remaining packets
             for (; j < nb_rx; j++) {
                 m = ptr[j];
                 process_pkt_mbuf(m, port);
             }
-        } /* end of packet count check */
+        }
     }
 
     return 0;
@@ -184,7 +179,6 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
     struct rte_ether_hdr *eth_hdr = NULL;
     struct rte_ipv4_hdr *ip_hdr = NULL;
     struct rte_udp_hdr *udp_hdr = NULL;
-
     gtpv1_t *gtp1_hdr = NULL;
     
     eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
@@ -194,8 +188,8 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
     //     eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
     //     eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5]);
 
-    // Ether type: IPv4 (0x8)
-    if (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) {
+    // Ether type: IPv4 (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) = 0x8)
+    if (likely(eth_hdr->ether_type == 0x8)) {
         ip_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1));
         // printf(" IPv4(");
         // print_rte_ipv4(ip_hdr->src_addr);
@@ -218,15 +212,15 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
             //     rte_cpu_to_be_16(udp_hdr->src_port), 
             //     rte_cpu_to_be_16(udp_hdr->dst_port));
 
-            /* GTPU LTE carries V1 only 2152*/
+            /* GTPU LTE carries V1 only 2152 (htons(2152) = 0x6808) */
             if (likely(udp_hdr->src_port == 0x6808 || 
-                        udp_hdr->dst_port == 0x6808)) {
+                       udp_hdr->dst_port == 0x6808)) {
                 gtp1_hdr = (gtpv1_t *)((char *)(udp_hdr + 1));
-                // printf(" GTP-U(ver:%d type:%d) ", gtp1_hdr->vr, gtp1_hdr->type);
+                // printf(" GTP-U(type:0x%x, teid:%d) ", gtp1_hdr->type, ntohl(gtp1_hdr->teid));
 
                 // Check if gtp version is 1
-                if (unlikely(gtp1_hdr->vr != 1)) {
-                    printf(" NonGTPVer(gtp1_hdr->vr:%d)\n", gtp1_hdr->vr);
+                if (unlikely(gtp1_hdr->flags >> 5 != 1)) {
+                    printf(" NonGTPVer(gtp1_hdr->ver:%d)\n", gtp1_hdr->flags >> 5);
                     port_pkt_stats[port].non_gtpVer += 1;
                     rte_pktmbuf_free(m);
                     return;
@@ -266,7 +260,7 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         }
     } /* (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) */
 
-    // Forward all non-gtpu packets
+    // Test: forward all non-gtpu packets
     // int32_t ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);
     // if (likely(ret == 1)) {
     //     return;
