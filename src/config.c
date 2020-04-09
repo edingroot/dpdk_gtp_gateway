@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <rte_common.h>
+#include <rte_jhash.h>
 
 app_confg_t app_config = {0};
 
@@ -20,6 +21,51 @@ get_int(const char *string)
     }
 
     return atoi(string);
+}
+
+static void
+init_config_hash(int with_locks)
+{
+    struct rte_hash_parameters params = {0};
+
+    // Initialize teid_in_hash
+    params.name = "teid_in_hash";
+    params.entries = GTP_CFG_MAX_TUNNELS;
+	params.key_len = sizeof(uint32_t);
+	params.hash_func = rte_jhash;
+	params.hash_func_init_val = 0;
+	params.socket_id = rte_socket_id();
+    if (with_locks) {
+		params.extra_flag =
+			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+	} else {
+		params.extra_flag = 0;
+    }
+
+    assert(rte_hash_find_existing(params.name) == NULL);
+    app_config.teid_in_hash = rte_hash_create(&params);
+    assert((intptr_t)app_config.teid_in_hash > 0);
+
+    // Initialize ue_ipv4_hash
+    memset(&params, 0, sizeof(struct rte_hash_parameters));
+    params.name = "ue_ipv4_hash";
+    params.entries = GTP_CFG_MAX_TUNNELS;
+	params.key_len = sizeof(uint32_t);
+	params.hash_func = rte_jhash;
+	params.hash_func_init_val = 0;
+	params.socket_id = rte_socket_id();
+    if (with_locks) {
+		params.extra_flag =
+			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+	} else {
+		params.extra_flag = 0;
+    }
+
+    assert(rte_hash_find_existing(params.name) == NULL);
+    app_config.ue_ipv4_hash = rte_hash_create(&params);
+    assert((intptr_t)app_config.ue_ipv4_hash > 0);
 }
 
 static int 
@@ -94,28 +140,36 @@ load_tunnel_entries(struct rte_cfgfile *file, const char *section_name)
 {
     int32_t j = 0, idx, ret = -1;
     struct rte_cfgfile_entry entries[32];
+    confg_gtp_tunnel_t *gtp_tunnel;
     
     ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
     idx = get_int(section_name + strlen(GTP_CFG_TAG_TUNNEL));
-    app_config.gtp_tunnels[idx].id = idx;
+    gtp_tunnel = &app_config.gtp_tunnels[idx];
+    gtp_tunnel->id = idx;
 
     for (j = 0; j < ret; j++) {
         printf("\n %15s : %-15s", entries[j].name, entries[j].value);
 
         if (STRCMP("teid_in", entries[j].name) == 0) {
-            app_config.gtp_tunnels[idx].teid_in = atoi(entries[j].value);
+            gtp_tunnel->teid_in = atoi(entries[j].value);
         } else if (STRCMP("teid_out", entries[j].name) == 0) {
-            app_config.gtp_tunnels[idx].teid_out = atoi(entries[j].value);
+            gtp_tunnel->teid_out = atoi(entries[j].value);
         } else if (STRCMP("ue_ipv4", entries[j].name) == 0) {
-            app_config.gtp_tunnels[idx].ue_ipv4 = inet_addr(entries[j].value);
+            gtp_tunnel->ue_ipv4 = inet_addr(entries[j].value);
         } else if (STRCMP("ran_ipv4", entries[j].name) == 0) {
-            app_config.gtp_tunnels[idx].ran_ipv4 = inet_addr(entries[j].value);
+            gtp_tunnel->ran_ipv4 = inet_addr(entries[j].value);
         } else {
             printf("\n ERROR: unexpected entry %s with value %s\n",
                 entries[j].name, entries[j].value);
             return -1;
         }
     } /* iterate entries */
+
+    // Add tunnel pointer to hashes
+    ret = rte_hash_add_key_data(app_config.teid_in_hash, &gtp_tunnel->teid_in, gtp_tunnel);
+    assert(ret == 0);
+    ret = rte_hash_add_key_data(app_config.ue_ipv4_hash, &gtp_tunnel->ue_ipv4, gtp_tunnel);
+    assert(ret == 0);
 
     return 0;
 }
@@ -126,6 +180,8 @@ load_gtp_config(void)
     struct rte_cfgfile *file = NULL;
     int32_t i = 0, ret;
     char **section_names = NULL;
+
+    init_config_hash(0);
 
     file = rte_cfgfile_load(GTP_CFG_FILE, 0);
     if (file == NULL) {
@@ -172,18 +228,4 @@ load_gtp_config(void)
     printf("\n\n");
     fflush(stdout);
     return 0;
-}
-
-confg_gtp_tunnel_t*
-find_tunnel_by_ue_ipv4(uint32_t ue_ipv4)
-{
-    uint8_t i;
-
-    for (i = 0; i < app_config.gtp_tunnel_count; i++) {
-        if (likely(app_config.gtp_tunnels[i].ue_ipv4 == ue_ipv4)) {
-            return &app_config.gtp_tunnels[i];
-        }
-    }
-
-    return NULL;
 }

@@ -22,8 +22,9 @@
 #include <rte_errno.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
+#include <rte_hash.h>
 
-/* D E F I N E S */   
+/* DEFINES */
 #define GTP_CFG_FILE        "gtp_config.ini"
 #define GTP_CFG_MAX_KEYLEN  15
 #define GTP_CFG_TAG_INTF    "INTF_"
@@ -63,10 +64,10 @@ typedef struct app_confg_s {
     confg_gtp_port_t gtp_ports[GTP_CFG_MAX_PORTS];
     uint8_t gtp_tunnel_count;
     confg_gtp_tunnel_t gtp_tunnels[GTP_CFG_MAX_TUNNELS];
+    struct rte_hash *teid_in_hash; // [teid_in] = *gtp_tunnel
+    struct rte_hash *ue_ipv4_hash; // [ue_ipv4] = *gtp_tunnel
 } app_confg_t;
 
 int32_t load_gtp_config(void);
-
-confg_gtp_tunnel_t *find_tunnel_by_ue_ipv4(uint32_t ue_ipv4);
 
 #endif /*__CONFIG_H__*/

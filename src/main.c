@@ -34,13 +34,6 @@ main(int argc, char **argv) {
 
     logger_init();
 
-    // Load INI configuration for fetching GTP port details
-    ret = load_gtp_config();
-    if (ret < 0) {
-        printf("\n ERROR: failed to load config\n");
-        return -1;
-    }
-
     // Initialize DPDK EAL
     ret = rte_eal_init(argc, argv);
     if (ret < 0) {
@@ -53,6 +46,13 @@ main(int argc, char **argv) {
     if (ret < 0) {
         rte_panic("\n ERROR: no Huge Page\n");
         exit(EXIT_FAILURE);
+    }
+
+    // Load ini config file
+    ret = load_gtp_config();
+    if (ret < 0) {
+        printf("\n ERROR: failed to load config\n");
+        return -1;
     }
 
     // Create packet buffer pool
@@ -99,6 +99,9 @@ main(int argc, char **argv) {
 
     do {
         rte_delay_ms(1000);
+        if (app_config.disp_stats) {
+            show_static_display();
+        }
         rte_timer_manage();
     } while (1);
 

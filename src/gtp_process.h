@@ -5,6 +5,7 @@
 #include <rte_ethdev.h>
 #include <rte_ip.h>
 #include <rte_memcpy.h>
+#include <rte_hash.h>
 
 #include "helper.h"
 #include "stats.h"
@@ -55,6 +56,14 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
         port_pkt_stats[port].rx_gptu_ipv4 += 1;
     }
 
+    // Check whether there is a matched tunnel
+    uint32_t teid_in = ntohl(rx_gtp_hdr->teid);
+    if (unlikely(rte_hash_lookup(app_config.teid_in_hash, &teid_in) < 0)) {
+        printf(" [ERR] No matched tunnel found with teid_in: %d\n", teid_in);
+        port_pkt_stats[port].dropped += 1;
+        return 0;
+    }
+
     // Outer header removal
     const int outer_hdr_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + 
                               sizeof(struct rte_udp_hdr) + sizeof(gtpv1_t);
@@ -74,9 +83,11 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     
     ret = get_mac(inner_ip_hdr->dst_addr, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
-        // printf(" Inner dst ip not found in arp table: ");
-        // print_rte_ipv4(inner_ip_hdr->dst_addr);
-        // printf("\n");
+        printf(" [ERR] Inner dst ip not found in arp table: ");
+        print_rte_ipv4(inner_ip_hdr->dst_addr);
+        printf("\n");
+        port_pkt_stats[port].dropped += 1;
+        
         send_arp_request(out_port, (unsigned char *)&inner_ip_hdr->dst_addr);
         return 0;
     }
@@ -96,12 +107,14 @@ static __rte_always_inline int32_t
 process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
 {
     int32_t ret;
-    confg_gtp_tunnel_t *tunnel = find_tunnel_by_ue_ipv4(rx_ip_hdr->dst_addr);
+    confg_gtp_tunnel_t *gtp_tunnel;
 
-    if (unlikely(tunnel == NULL)) {
-        printf(" No matched tunnel by ue_ipv4: ");
+    if (unlikely(rte_hash_lookup_data(app_config.ue_ipv4_hash, 
+            &rx_ip_hdr->dst_addr, (void **)&gtp_tunnel) < 0)) {
+        printf(" [ERR] No matched tunnel found by ue_ipv4: ");
         print_rte_ipv4(rx_ip_hdr->dst_addr);
         printf("\n");
+        port_pkt_stats[port].dropped += 1;
         return 0;
     }
 
@@ -128,12 +141,14 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
         (const struct rte_ether_addr *)out_iface->hw_addr, 
         (struct rte_ether_addr *)eth_hdr->s_addr.addr_bytes);
     
-    ret = get_mac(tunnel->ran_ipv4, eth_hdr->d_addr.addr_bytes);
+    ret = get_mac(gtp_tunnel->ran_ipv4, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
-        printf(" Dst ip not found in arp table: ");
-        print_rte_ipv4(tunnel->ran_ipv4);
+        printf(" [ERR] Dst ip not found in arp table: ");
+        print_rte_ipv4(gtp_tunnel->ran_ipv4);
         printf("\n");
-        send_arp_request(out_port, (unsigned char *)&tunnel->ran_ipv4);
+        port_pkt_stats[port].dropped += 1;
+
+        send_arp_request(out_port, (unsigned char *)&gtp_tunnel->ran_ipv4);
         return 0;
     }
 
@@ -144,7 +159,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     ip_hdr->time_to_live = IPDEFTTL;
     ip_hdr->next_proto_id = IPPROTO_UDP;
     ip_hdr->src_addr = out_iface->ipv4_addr;
-    ip_hdr->dst_addr = tunnel->ran_ipv4;
+    ip_hdr->dst_addr = gtp_tunnel->ran_ipv4;
     ip_hdr->hdr_checksum = 0;
     
     // UDP header
@@ -159,7 +174,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     uint16_t payload_len = m->pkt_len - sizeof(struct rte_ether_hdr)
                                       - sizeof(struct rte_ipv4_hdr)
                                       - sizeof(struct rte_udp_hdr);
-    gtpv1_set_header(gtp1_hdr, payload_len, tunnel->teid_out);
+    gtpv1_set_header(gtp1_hdr, payload_len, gtp_tunnel->teid_out);
 
     // Checksum offloads
     m->l2_len = sizeof(struct rte_ether_hdr);
