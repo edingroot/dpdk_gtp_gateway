@@ -7,8 +7,11 @@
 
 #include <rte_common.h>
 #include <rte_ether.h>
+#include <rte_hash.h>
 
 #include "logger.h"
+
+#define MAX_ARP_ENTRIES 8192
 
 #define HW_TYPE_ETHERNET 1
 #define SW_TYPE_IPV4 0x0800
@@ -40,19 +43,35 @@ struct arp {
     unsigned char dst_pr_add[PR_LEN_IPV4];
 } __attribute__((__packed__));
 
-struct arp_entry {
+typedef struct arp_entry_s {
     uint32_t ipv4_addr; // host format (before htonl)
     unsigned char mac_addr[RTE_ETHER_ADDR_LEN];
-    struct arp_entry *next;
-};
+} arp_entry_t;
 
+int arp_init(int with_locks);
 int arp_in(struct rte_mbuf *mbuf);
 
 int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
+
+/**
+ * Add an IPv4-MAC pair into arp table.
+ * If there is an arp entry with same IP existed, the mac addr will be updated.
+ *
+ * @return
+ *   - 0 if added successfully
+ *   - A negative number if error occurred
+ */
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 
 int send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add);
+
+/**
+ * @return
+ *   - 0 if sent successfully
+ *   - A negative number if error occurred
+ */
 int send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add);
+
 int send_arp(struct arp *arp_pkt, uint8_t port);
 
 void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);

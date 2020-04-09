@@ -66,6 +66,10 @@ main(int argc, char **argv) {
     }
     printf("\n");
 
+    // Init ARP table
+    ret = arp_init(0);
+    assert(ret == 0);
+
     // Add interface info to interface and arp table
     add_interfaces();
 
