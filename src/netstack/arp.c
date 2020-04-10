@@ -58,9 +58,9 @@ arp_in(struct rte_mbuf *mbuf)
     assert(mbuf->buf_len >= sizeof(struct arp));
     assert(rte_pktmbuf_data_len(mbuf) >= (sizeof(struct arp) + sizeof(struct rte_ether_hdr)));
 
-    struct arp *arp_pkt = 
+    struct arp *arp_pkt =
         (struct arp *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + sizeof(struct rte_ether_hdr));
-    
+
     switch (ntohs(arp_pkt->opcode)) {
         case ARP_REQ: {
             logger_s(LOG_ARP, L_INFO, "\n");
@@ -141,7 +141,7 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
 {
     struct rte_mbuf *new_mbuf = get_mbuf();
     assert(likely(new_mbuf != NULL));
-    
+
     struct arp *arp_req = (struct arp *)rte_pktmbuf_prepend(new_mbuf, sizeof(struct arp));
 
     // http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
@@ -159,8 +159,8 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
     }
 
     if (unlikely(iface == NULL)) {
-        logger(LOG_ARP, L_CRITICAL, 
-            "ARP request failed, iface_num(%d) not in interface list\n", 
+        logger(LOG_ARP, L_CRITICAL,
+            "ARP request failed, iface_num(%d) not in interface list\n",
             iface_num);
         return 0;
     }
@@ -174,7 +174,7 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
     rte_memcpy(arp_req->dst_hw_add, dest_mac, RTE_ETHER_ADDR_LEN);
     rte_memcpy(arp_req->src_pr_add, &iface->ipv4_addr, PR_LEN_IPV4);
     rte_memcpy(arp_req->dst_pr_add, dst_pr_add, PR_LEN_IPV4);
-    
+
     send_arp(arp_req, iface->iface_num);
 
     return 0;
@@ -231,7 +231,7 @@ send_arp(struct arp *arp_pkt, uint8_t port)
 
     int i;
     struct arp *arp_hdr = (struct arp *)rte_pktmbuf_prepend(mbuf, sizeof(struct arp));
-    struct rte_ether_hdr *eth = 
+    struct rte_ether_hdr *eth =
         (struct rte_ether_hdr *)rte_pktmbuf_prepend(mbuf, sizeof(struct rte_ether_hdr));
 
     rte_memcpy(arp_hdr, arp_pkt, sizeof(struct arp));
@@ -243,7 +243,7 @@ send_arp(struct arp *arp_pkt, uint8_t port)
         for (i = 0; i < 6; i++) {
             eth->d_addr.addr_bytes[i] = 0xff;
         }
-    
+
     } else if (arp_pkt->opcode == ntohs(ARP_REPLY)) {
         eth->ether_type = htons(RTE_ETHER_TYPE_ARP);
 
@@ -258,7 +258,11 @@ send_arp(struct arp *arp_pkt, uint8_t port)
     // TODO: fix the below, port should be dfrom routing
     const int queue_id = 0;
     const uint16_t total_packets_sent = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
-    assert(likely(total_packets_sent == 1));
+    if (unlikely(total_packets_sent != 1)) {
+        logger(LOG_ARP, L_CRITICAL, "Error sending arp message\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -293,7 +297,7 @@ print_arp_table(TraceLevel trace_level)
         logger(LOG_ARP, trace_level, " - IP = ");
         print_ipv4(*ipv4_addr, trace_level); // arp_entry->ipv4_addr
         logger_s(LOG_ARP, trace_level, "\n");
-        
+
         logger(LOG_ARP, trace_level, "   MAC = ");
         print_mac(arp_entry->mac_addr, trace_level);
         logger_s(LOG_ARP, trace_level, "\n");
