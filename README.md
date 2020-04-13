@@ -1,4 +1,4 @@
-# dpdk_gtp_module
+# dpdk_gtp_gateway
 DPDK implementation of GTPv1 user plane gateway.
 
 ### Features
