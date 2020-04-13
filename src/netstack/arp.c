@@ -66,8 +66,7 @@ arp_in(struct rte_mbuf *mbuf)
             logger_s(LOG_ARP, L_INFO, "\n");
             logger(LOG_ARP, L_INFO, "[ARP Request]\n");
 
-            ret = send_arp_reply(arp_pkt->src_hw_add, arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
-            assert(ret == 0);
+            send_arp_reply(arp_pkt->src_hw_add, arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
             logger_s(LOG_ARP, L_DEBUG, "\n");
 
             // uint32_t ip_addr = int_addr_from_char(arp_pkt->src_pr_add, 0);
@@ -139,20 +138,13 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
 int
 send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
 {
-    struct rte_mbuf *new_mbuf = get_mbuf();
-    assert(likely(new_mbuf != NULL));
-
-    struct arp *arp_req = (struct arp *)rte_pktmbuf_prepend(new_mbuf, sizeof(struct arp));
-
-    // http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
-    arp_req->hw_type = htons(HW_TYPE_ETHERNET);
-    arp_req->pr_type = htons(SW_TYPE_IPV4);
-    arp_req->hw_len = RTE_ETHER_ADDR_LEN;
-    arp_req->pr_len = PR_LEN_IPV4;
-    arp_req->opcode = htons(1);
-
     unsigned char dest_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     interface_t *iface = iface_list;
+
+    logger_s(LOG_ARP, L_DEBUG, "\n");
+    logger(LOG_ARP, L_DEBUG, "<ARP Request> for ");
+    print_ipv4(iface->ipv4_addr, L_DEBUG);
+    logger_s(LOG_ARP, L_DEBUG, "\n");
 
     while (iface && iface_num != iface->iface_num) {
         iface = iface->next;
@@ -165,25 +157,33 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
         return 0;
     }
 
-    logger_s(LOG_ARP, L_DEBUG, "\n");
-    logger(LOG_ARP, L_DEBUG, "<ARP Request> for ");
-    print_ipv4(iface->ipv4_addr, L_DEBUG);
-    logger_s(LOG_ARP, L_DEBUG, "\n");
+    struct rte_mbuf *mbuf = get_mbuf();
+    assert(likely(mbuf != NULL));
 
+    // http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
+    struct arp *arp_req = (struct arp *)rte_pktmbuf_prepend(mbuf, sizeof(struct arp));
+    arp_req->hw_type = htons(HW_TYPE_ETHERNET);
+    arp_req->pr_type = htons(SW_TYPE_IPV4);
+    arp_req->hw_len = RTE_ETHER_ADDR_LEN;
+    arp_req->pr_len = PR_LEN_IPV4;
+    arp_req->opcode = htons(1);
     rte_memcpy(arp_req->src_hw_add, iface->hw_addr, RTE_ETHER_ADDR_LEN);
     rte_memcpy(arp_req->dst_hw_add, dest_mac, RTE_ETHER_ADDR_LEN);
     rte_memcpy(arp_req->src_pr_add, &iface->ipv4_addr, PR_LEN_IPV4);
     rte_memcpy(arp_req->dst_pr_add, dst_pr_add, PR_LEN_IPV4);
 
-    send_arp(arp_req, iface->iface_num);
-
-    return 0;
+    int ret = send_arp(mbuf, iface->iface_num);
+    if (likely(ret == 0)) {
+        return 0;
+    } else {
+        rte_pktmbuf_free(mbuf);
+        return -1;
+    }
 }
 
 int
 send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add)
 {
-    struct arp *arp_reply = (struct arp *)malloc(sizeof(struct arp));
     uint32_t ip_addr = int_addr_from_char(src_pr_add, 1);
     interface_t *iface = iface_list;
 
@@ -201,7 +201,11 @@ send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned c
         return -1;
     }
 
+    struct rte_mbuf *mbuf = get_mbuf();
+    assert(likely(mbuf != NULL));
+
     // http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
+    struct arp *arp_reply = (struct arp *)rte_pktmbuf_prepend(mbuf, sizeof(struct arp));
     arp_reply->hw_type = htons(HW_TYPE_ETHERNET);
     arp_reply->pr_type = htons(SW_TYPE_IPV4);
     arp_reply->hw_len = RTE_ETHER_ADDR_LEN;
@@ -216,25 +220,24 @@ send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned c
     print_mac(arp_reply->dst_hw_add, L_DEBUG);
     logger_s(LOG_ARP, L_DEBUG, "\n");
 
-    send_arp(arp_reply, iface->iface_num);
-
-    free(arp_reply);
-    return 0;
+    int ret = send_arp(mbuf, iface->iface_num);
+    if (likely(ret == 0)) {
+        return 0;
+    } else {
+        rte_pktmbuf_free(mbuf);
+        return -1;
+    }
 }
 
 int
-send_arp(struct arp *arp_pkt, uint8_t port)
+send_arp(struct rte_mbuf *mbuf, uint8_t port)
 {
     // logger(LOG_ARP, L_DEBUG, "Sending arp packet\n");
-    struct rte_mbuf *mbuf = get_mbuf();
-    assert(likely(mbuf != NULL));
 
     int i;
-    struct arp *arp_hdr = (struct arp *)rte_pktmbuf_prepend(mbuf, sizeof(struct arp));
+    struct arp *arp_pkt = (struct arp *)rte_pktmbuf_mtod(mbuf, struct arp *);
     struct rte_ether_hdr *eth =
         (struct rte_ether_hdr *)rte_pktmbuf_prepend(mbuf, sizeof(struct rte_ether_hdr));
-
-    rte_memcpy(arp_hdr, arp_pkt, sizeof(struct arp));
 
     if (arp_pkt->opcode == ntohs(ARP_REQ)) {
         eth->ether_type = htons(RTE_ETHER_TYPE_ARP);
@@ -243,16 +246,13 @@ send_arp(struct arp *arp_pkt, uint8_t port)
         for (i = 0; i < 6; i++) {
             eth->d_addr.addr_bytes[i] = 0xff;
         }
-
     } else if (arp_pkt->opcode == ntohs(ARP_REPLY)) {
         eth->ether_type = htons(RTE_ETHER_TYPE_ARP);
 
         rte_memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->src_hw_add));
         rte_memcpy(&eth->d_addr.addr_bytes[0], arp_pkt->dst_hw_add, sizeof(arp_pkt->dst_hw_add));
-
     } else {
         logger(LOG_ARP, L_CRITICAL, "Invalid opcode %d", arp_pkt->opcode);
-        rte_pktmbuf_free(mbuf);
         return -1;
     }
 
@@ -261,10 +261,10 @@ send_arp(struct arp *arp_pkt, uint8_t port)
     const uint16_t total_packets_sent = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
     if (unlikely(total_packets_sent != 1)) {
         logger(LOG_ARP, L_CRITICAL, "Error sending arp message\n");
-        rte_pktmbuf_free(mbuf);
         return -1;
     }
 
+    rte_pktmbuf_free(mbuf);
     return 0;
 }
 

@@ -72,7 +72,7 @@ int send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add);
  */
 int send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add);
 
-int send_arp(struct arp *arp_pkt, uint8_t port);
+int send_arp(struct rte_mbuf *mbuf, uint8_t port);
 
 void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);
 void print_arp_table(TraceLevel trace_level);
