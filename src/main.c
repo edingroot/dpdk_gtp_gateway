@@ -23,7 +23,7 @@ extern app_confg_t app_config;
 extern numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 extern pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS];
 
-static void add_interfaces(void);
+static int add_interfaces(void);
 static __rte_always_inline int pkt_handler(void *arg);
 static __rte_always_inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port);
 
@@ -71,7 +71,8 @@ main(int argc, char **argv) {
     assert(ret == 0);
 
     // Add interface info to interface and arp table
-    add_interfaces();
+    ret = add_interfaces();
+    assert(ret == 0);
 
     // Set interface options and queues
     if (node_interface_setup() < 0) {
@@ -108,28 +109,35 @@ main(int argc, char **argv) {
     return 0;
 }
 
-static void
+static int
 add_interfaces(void)
 {
     int32_t i;
     struct rte_ether_addr addr;
 
     if (app_config.gtp_port_count != rte_eth_dev_count_avail()) {
-        logger(LOG_APP, L_CRITICAL, 
-            "Number of interface in config (%d) does not match avail dpdk eth dev (%d)\n", 
+        logger(LOG_APP, L_CRITICAL,
+            "Number of interface in config (%d) does not match avail dpdk eth dev (%d)\n",
             app_config.gtp_port_count, rte_eth_dev_count_avail());
+
+        if (app_config.gtp_port_count > rte_eth_dev_count_avail()) {
+            logger(LOG_APP, L_CRITICAL, "Aborting.\n");
+            return -1;
+        }
     }
-    
+
     for (i = 0; i < rte_eth_dev_count_avail(); i++) {
         interface_t iface;
         rte_eth_macaddr_get(i, &addr);
-        
+
         iface.iface_num = i;
         iface.ipv4_addr = app_config.gtp_ports[i].ipv4;
         memcpy(iface.hw_addr, addr.addr_bytes, sizeof(iface.hw_addr));
 
         add_interface(&iface);
     }
+
+    return 0;
 }
 
 static __rte_always_inline int
@@ -187,7 +195,7 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
     struct rte_ipv4_hdr *ip_hdr = NULL;
     struct rte_udp_hdr *udp_hdr = NULL;
     gtpv1_t *gtp1_hdr = NULL;
-    
+
     eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
     // printf("\n [RX] Port#%u Ether(type:0x%x dst mac: %x:%x:%x:%x:%x:%x) ",
     //     m->port, eth_hdr->ether_type,
@@ -215,12 +223,12 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         // printf(" protocol: %x ", ip_hdr->next_proto_id);
         if (likely(ip_hdr->next_proto_id == 0x11)) {
             udp_hdr = (struct rte_udp_hdr *)((char *)(ip_hdr + 1));
-            // printf(" UDP(port src:%d dst:%d) ", 
-            //     rte_cpu_to_be_16(udp_hdr->src_port), 
+            // printf(" UDP(port src:%d dst:%d) ",
+            //     rte_cpu_to_be_16(udp_hdr->src_port),
             //     rte_cpu_to_be_16(udp_hdr->dst_port));
 
             /* GTPU LTE carries V1 only 2152 (htons(2152) = 0x6808) */
-            if (likely(udp_hdr->src_port == 0x6808 || 
+            if (likely(udp_hdr->src_port == 0x6808 ||
                        udp_hdr->dst_port == 0x6808)) {
                 gtp1_hdr = (gtpv1_t *)((char *)(udp_hdr + 1));
                 // printf(" GTP-U(type:0x%x, teid:%d) ", gtp1_hdr->type, ntohl(gtp1_hdr->teid));
