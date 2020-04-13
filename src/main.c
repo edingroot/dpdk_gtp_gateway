@@ -113,17 +113,23 @@ static int
 add_interfaces(void)
 {
     int32_t i;
+    uint16_t avail_dev_count = rte_eth_dev_count_avail();
     struct rte_ether_addr addr;
 
-    if (app_config.gtp_port_count != rte_eth_dev_count_avail()) {
+    if (app_config.gtp_port_count == 0 || app_config.gtp_port_count % 2 != 0) {
         logger(LOG_APP, L_CRITICAL,
-            "Number of interface in config (%d) does not match avail dpdk eth dev (%d)\n",
-            app_config.gtp_port_count, rte_eth_dev_count_avail());
-
-        if (app_config.gtp_port_count > rte_eth_dev_count_avail()) {
-            logger(LOG_APP, L_CRITICAL, "Aborting.\n");
-            return -1;
-        }
+            "Number of interface in config (%d) should be even and larger than zero\n",
+            app_config.gtp_port_count, avail_dev_count);
+        return -1;
+    } else if (app_config.gtp_port_count > avail_dev_count) {
+        logger(LOG_APP, L_CRITICAL,
+            "Number of interface in config (%d) > avail dpdk eth devices (%d), abort.\n",
+            app_config.gtp_port_count, avail_dev_count);
+        return -1;
+    } else {
+        logger(LOG_APP, L_WARN,
+            "Number of interface in config (%d) != avail dpdk eth devices (%d)\n",
+            app_config.gtp_port_count, avail_dev_count);
     }
 
     for (i = 0; i < rte_eth_dev_count_avail(); i++) {

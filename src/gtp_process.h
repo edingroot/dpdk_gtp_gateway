@@ -40,8 +40,8 @@ static __rte_always_inline void
 gtpv1_set_header(gtpv1_t *gtp_hdr, uint16_t payload_len, uint32_t teid);
 
 /* FUNCTIONS */
-static __rte_always_inline int32_t 
-process_gtpv1(struct rte_mbuf *m, uint8_t port, 
+static __rte_always_inline int32_t
+process_gtpv1(struct rte_mbuf *m, uint8_t port,
               struct rte_ipv4_hdr *outer_ip_hdr, gtpv1_t *rx_gtp_hdr)
 {
     int32_t ret;
@@ -65,29 +65,31 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     }
 
     // Outer header removal
-    const int outer_hdr_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + 
+    const int outer_hdr_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) +
                               sizeof(struct rte_udp_hdr) + sizeof(gtpv1_t);
     rte_pktmbuf_adj(m, (uint16_t)outer_hdr_len);
 
     // Send to another port
     uint16_t out_port = port ^ 1;
-    
+
     // Prepend ethernet header
     struct rte_ether_hdr *eth_hdr = (struct rte_ether_hdr *)
             rte_pktmbuf_prepend(m, (uint16_t)sizeof(struct rte_ether_hdr));
-    
+
     eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
     rte_ether_addr_copy(
-        (const struct rte_ether_addr *)num_iface_map[out_port]->hw_addr, 
+        (const struct rte_ether_addr *)num_iface_map[out_port]->hw_addr,
         (struct rte_ether_addr *)eth_hdr->s_addr.addr_bytes);
-    
+
     ret = get_mac(inner_ip_hdr->dst_addr, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
         printf(" ERR(Inner dst ip not found in arp table: ");
         print_rte_ipv4(inner_ip_hdr->dst_addr);
         printf(")\n");
+
+        // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
-        
+
         send_arp_request(out_port, (unsigned char *)&inner_ip_hdr->dst_addr);
         return 0;
     }
@@ -99,17 +101,17 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
         // TODO: counter?
         return 1;
     }
-    
+
     return 0;
 }
 
-static __rte_always_inline int32_t 
+static __rte_always_inline int32_t
 process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
 {
     int32_t ret;
     confg_gtp_tunnel_t *gtp_tunnel;
 
-    if (unlikely(rte_hash_lookup_data(app_config.ue_ipv4_hash, 
+    if (unlikely(rte_hash_lookup_data(app_config.ue_ipv4_hash,
             &rx_ip_hdr->dst_addr, (void **)&gtp_tunnel) < 0)) {
         printf(" ERR(No matched tunnel found by ue_ipv4: ");
         print_rte_ipv4(rx_ip_hdr->dst_addr);
@@ -122,7 +124,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     rte_pktmbuf_adj(m, (uint16_t)sizeof(struct rte_ether_hdr));
 
     // Outer header creation
-    const int outer_hdr_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + 
+    const int outer_hdr_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) +
                               sizeof(struct rte_udp_hdr) + sizeof(gtpv1_t);
     struct rte_ether_hdr *eth_hdr = (struct rte_ether_hdr *)
             rte_pktmbuf_prepend(m, (uint16_t)outer_hdr_len);
@@ -130,22 +132,24 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     // Send to another port
     uint16_t out_port = port ^ 1;
     interface_t *out_iface = num_iface_map[out_port];
-    
+
     struct rte_ipv4_hdr *ip_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1));
     struct rte_udp_hdr *udp_hdr = (struct rte_udp_hdr *)((char *)(ip_hdr + 1));
     gtpv1_t *gtp1_hdr = (gtpv1_t *)((char *)(udp_hdr + 1));
-    
+
     // Ethernet header
     eth_hdr->ether_type = 0x8; // IPv4
     rte_ether_addr_copy(
-        (const struct rte_ether_addr *)out_iface->hw_addr, 
+        (const struct rte_ether_addr *)out_iface->hw_addr,
         (struct rte_ether_addr *)eth_hdr->s_addr.addr_bytes);
-    
+
     ret = get_mac(gtp_tunnel->ran_ipv4, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
         printf(" ERR(Dst ip not found in arp table: ");
         print_rte_ipv4(gtp_tunnel->ran_ipv4);
         printf(")\n");
+
+        // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
         send_arp_request(out_port, (unsigned char *)&gtp_tunnel->ran_ipv4);
@@ -161,7 +165,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     ip_hdr->src_addr = out_iface->ipv4_addr;
     ip_hdr->dst_addr = gtp_tunnel->ran_ipv4;
     ip_hdr->hdr_checksum = 0;
-    
+
     // UDP header
     udp_hdr->src_port = 0x6808; // htons(2152)
     udp_hdr->dst_port = 0x6808; // htons(2152)
@@ -201,8 +205,8 @@ gtpv1_set_header(gtpv1_t *gtp1_hdr, uint16_t payload_len, uint32_t teid)
      *	  +--+--+--+--+--+--+--+--+
      *	    0  0  1  1	0  0  0  0
      */
-    gtp1_hdr->flags	= 0x30; // v1, GTP-non-prime
-    gtp1_hdr->type	= GTP_TPDU;
+    gtp1_hdr->flags = 0x30; // v1, GTP-non-prime
+    gtp1_hdr->type = GTP_TPDU;
     gtp1_hdr->length = htons(payload_len);
     gtp1_hdr->teid = htonl(teid);
 
