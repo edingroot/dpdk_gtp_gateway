@@ -189,7 +189,7 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
     gtpv1_t *gtp1_hdr = NULL;
     
     eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-    // printf("\n [RX] Port#%u Ether(type:%x dst mac: %x:%x:%x:%x:%x:%x) ",
+    // printf("\n [RX] Port#%u Ether(type:0x%x dst mac: %x:%x:%x:%x:%x:%x) ",
     //     m->port, eth_hdr->ether_type,
     //     eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
     //     eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
@@ -244,6 +244,8 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
                 // GTP decap / forward
                 if (likely(process_gtpv1(m, port, ip_hdr, gtp1_hdr) > 0)) {
                     return;
+                } else {
+                    printf(" ERR(failed to TX)\n");
                 }
             } else {
                 port_pkt_stats[port].non_gtp += 1;

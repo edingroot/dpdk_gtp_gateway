@@ -83,9 +83,9 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     
     ret = get_mac(inner_ip_hdr->dst_addr, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
-        printf(" [ERR] Inner dst ip not found in arp table: ");
+        printf(" ERR(Inner dst ip not found in arp table: ");
         print_rte_ipv4(inner_ip_hdr->dst_addr);
-        printf("\n");
+        printf(")\n");
         port_pkt_stats[port].dropped += 1;
         
         send_arp_request(out_port, (unsigned char *)&inner_ip_hdr->dst_addr);
@@ -93,7 +93,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     }
 
     // Transmit
-    // printf(" [decap tx]\n");
+    // printf(" [decap tx]");
     ret = rte_eth_tx_burst(out_port, 0, &m, 1);
     if (likely(ret == 1)) {
         // TODO: counter?
@@ -111,9 +111,9 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
 
     if (unlikely(rte_hash_lookup_data(app_config.ue_ipv4_hash, 
             &rx_ip_hdr->dst_addr, (void **)&gtp_tunnel) < 0)) {
-        printf(" [ERR] No matched tunnel found by ue_ipv4: ");
+        printf(" ERR(No matched tunnel found by ue_ipv4: ");
         print_rte_ipv4(rx_ip_hdr->dst_addr);
-        printf("\n");
+        printf(")\n");
         port_pkt_stats[port].dropped += 1;
         return 0;
     }
@@ -143,9 +143,9 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     
     ret = get_mac(gtp_tunnel->ran_ipv4, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
-        printf(" [ERR] Dst ip not found in arp table: ");
+        printf(" ERR(Dst ip not found in arp table: ");
         print_rte_ipv4(gtp_tunnel->ran_ipv4);
-        printf("\n");
+        printf(")\n");
         port_pkt_stats[port].dropped += 1;
 
         send_arp_request(out_port, (unsigned char *)&gtp_tunnel->ran_ipv4);
@@ -182,7 +182,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     m->ol_flags |= PKT_TX_IPV4 | PKT_TX_IP_CKSUM;
 
     // Transmit
-    // printf(" [encap tx]\n");
+    // printf(" [encap tx]");
     ret = rte_eth_tx_burst(out_port, 0, &m, 1);
     if (likely(ret == 1)) {
         port_pkt_stats[out_port].tx_gptu += 1;

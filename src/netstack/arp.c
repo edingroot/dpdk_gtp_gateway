@@ -252,6 +252,7 @@ send_arp(struct arp *arp_pkt, uint8_t port)
 
     } else {
         logger(LOG_ARP, L_CRITICAL, "Invalid opcode %d", arp_pkt->opcode);
+        rte_pktmbuf_free(mbuf);
         return -1;
     }
 
@@ -260,6 +261,7 @@ send_arp(struct arp *arp_pkt, uint8_t port)
     const uint16_t total_packets_sent = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
     if (unlikely(total_packets_sent != 1)) {
         logger(LOG_ARP, L_CRITICAL, "Error sending arp message\n");
+        rte_pktmbuf_free(mbuf);
         return -1;
     }
 
