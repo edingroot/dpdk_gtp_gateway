@@ -101,9 +101,10 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     if (likely(ret == 1)) {
         // TODO: counter?
         return 1;
+    } else {
+        printf(" ERR(rte_eth_tx_burst=%d) ", ret);
+        return 0;
     }
-
-    return 0;
 }
 
 static __rte_always_inline int32_t
@@ -192,9 +193,10 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     if (likely(ret == 1)) {
         port_pkt_stats[out_port].tx_gptu += 1;
         return 1;
+    } else {
+        printf(" ERR(rte_eth_tx_burst=%d) ", ret);
+        return 0;
     }
-
-    return 0;
 }
 
 static __rte_always_inline void

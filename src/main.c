@@ -126,7 +126,7 @@ add_interfaces(void)
             "Number of interface in config (%d) > avail dpdk eth devices (%d), abort.\n",
             app_config.gtp_port_count, avail_dev_count);
         return -1;
-    } else {
+    } else if (app_config.gtp_port_count != avail_dev_count) {
         logger(LOG_APP, L_WARN,
             "Number of interface in config (%d) != avail dpdk eth devices (%d)\n",
             app_config.gtp_port_count, avail_dev_count);

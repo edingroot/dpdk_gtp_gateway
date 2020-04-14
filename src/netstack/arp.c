@@ -161,7 +161,6 @@ send_arp_request(uint8_t iface_num, uint32_t dst_ip_addr)
     print_ipv4(dst_ip_addr, L_DEBUG);
     logger_s(LOG_ARP, L_INFO, "  Tell ");
     print_ipv4(iface->ipv4_addr, L_DEBUG);
-    logger_s(LOG_ARP, L_DEBUG, "\n");
 
     struct rte_mbuf *mbuf = get_mbuf();
     assert(likely(mbuf != NULL));
@@ -232,8 +231,6 @@ send_arp_reply(uint32_t src_ip_addr, unsigned char *dst_hw_addr, unsigned char *
 int
 send_arp(struct rte_mbuf *mbuf, uint8_t port)
 {
-    // logger(LOG_ARP, L_DEBUG, "Sending arp packet\n");
-
     int i;
     struct arp *arp_pkt = (struct arp *)rte_pktmbuf_mtod(mbuf, struct arp *);
     struct rte_ether_hdr *eth =
@@ -257,13 +254,14 @@ send_arp(struct rte_mbuf *mbuf, uint8_t port)
     }
 
     // TODO: fix the below, port should be dfrom routing
+    logger_s(LOG_ARP, L_DEBUG, " [TX#%d]", port);
     const int queue_id = 0;
     const uint16_t total_packets_sent = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
     if (unlikely(total_packets_sent != 1)) {
-        logger(LOG_ARP, L_CRITICAL, "Error sending arp message\n");
+        logger_s(LOG_ARP, L_CRITICAL, " ERR(rte_eth_tx_burst=%d)\n", total_packets_sent);
         return -1;
     } else {
-        logger_s(LOG_ARP, L_DEBUG, " [TX#%d] \n", port);
+        logger_s(LOG_ARP, L_DEBUG, "\n");
     }
 
     rte_pktmbuf_free(mbuf);
