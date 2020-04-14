@@ -29,6 +29,12 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#######################################################
+# Uncomment the following line for debugging each packet
+DEFINE_FLAGS += -DDEBUG
+
+#######################################################
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -38,10 +44,10 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-# binary name
+# Binary name
 APP = gtpgw
 
-# all source are stored in SRCS-y
+# All source are stored in SRCS-y
 SRC_DIR = $(abspath $(shell pwd)/..)/src
 LIB_DIR = $(SRC_DIR)/lib
 
@@ -53,7 +59,7 @@ SRCS-y := $(LIB_DIR)/logger.c $(LIB_DIR)/pktbuf.c \
 		  $(SRC_DIR)/node.c $(SRC_DIR)/stats.c $(SRC_DIR)/config.c \
 		  $(SRC_DIR)/main.c
 
-CFLAGS += -g -O3
+CFLAGS += -std=gnu99 -g -O3 $(DEFINE_FLAGS)
 # CFLAGS += -Ofast
 CFLAGS += $(WERROR_FLAGS)
 

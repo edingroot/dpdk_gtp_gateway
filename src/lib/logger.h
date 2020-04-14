@@ -6,8 +6,14 @@
 #define __LOGGER_H_
 
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <rte_common.h>
+
+#ifdef DEBUG
+#define printf_dbg(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#else
+#define printf_dbg(fmt, ...)
+#endif
 
 typedef enum {
     LOG_APP,

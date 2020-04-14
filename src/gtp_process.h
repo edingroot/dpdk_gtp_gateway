@@ -7,6 +7,7 @@
 #include <rte_memcpy.h>
 #include <rte_hash.h>
 
+#include "logger.h"
 #include "helper.h"
 #include "stats.h"
 #include "netstack/arp.h"
@@ -46,9 +47,9 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
 {
     int32_t ret;
     struct rte_ipv4_hdr *inner_ip_hdr = (struct rte_ipv4_hdr *)((char *)(rx_gtp_hdr + 1));
-    // print_rte_ipv4(inner_ip_hdr->src_addr);
-    // printf(" -> ");
-    // print_rte_ipv4(inner_ip_hdr->dst_addr);
+    print_rte_ipv4_dbg(inner_ip_hdr->src_addr);
+    printf_dbg(" -> ");
+    print_rte_ipv4_dbg(inner_ip_hdr->dst_addr);
 
     if (unlikely((inner_ip_hdr->version_ihl & 0x40) != 0x40)) {
         port_pkt_stats[port].rx_gptu_ipv6 += 1;
@@ -59,7 +60,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     // Check whether there is a matched tunnel
     uint32_t teid_in = ntohl(rx_gtp_hdr->teid);
     if (unlikely(rte_hash_lookup(app_config.teid_in_hash, &teid_in) < 0)) {
-        printf(" [ERR] No matched tunnel found with teid_in: %d\n", teid_in);
+        printf(" ERR(No matched tunnel found with teid_in: %d) ", teid_in);
         port_pkt_stats[port].dropped += 1;
         return 0;
     }
@@ -85,17 +86,17 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
     if (unlikely(ret != 1)) {
         printf(" ERR(Inner dst ip not found in arp table: ");
         print_rte_ipv4(inner_ip_hdr->dst_addr);
-        printf(")\n");
+        printf(") ");
 
         // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
-        send_arp_request(out_port, (unsigned char *)&inner_ip_hdr->dst_addr);
+        send_arp_request(out_port, inner_ip_hdr->dst_addr);
         return 0;
     }
 
     // Transmit
-    // printf(" [decap tx]");
+    printf_dbg(" [decap TX#%d]", out_port);
     ret = rte_eth_tx_burst(out_port, 0, &m, 1);
     if (likely(ret == 1)) {
         // TODO: counter?
@@ -115,7 +116,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
             &rx_ip_hdr->dst_addr, (void **)&gtp_tunnel) < 0)) {
         printf(" ERR(No matched tunnel found by ue_ipv4: ");
         print_rte_ipv4(rx_ip_hdr->dst_addr);
-        printf(")\n");
+        printf(") ");
         port_pkt_stats[port].dropped += 1;
         return 0;
     }
@@ -147,12 +148,12 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     if (unlikely(ret != 1)) {
         printf(" ERR(Dst ip not found in arp table: ");
         print_rte_ipv4(gtp_tunnel->ran_ipv4);
-        printf(")\n");
+        printf(") ");
 
         // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
-        send_arp_request(out_port, (unsigned char *)&gtp_tunnel->ran_ipv4);
+        send_arp_request(out_port, gtp_tunnel->ran_ipv4);
         return 0;
     }
 
@@ -186,7 +187,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
     m->ol_flags |= PKT_TX_IPV4 | PKT_TX_IP_CKSUM;
 
     // Transmit
-    // printf(" [encap tx]");
+    printf_dbg(" [encap TX#%d]", out_port);
     ret = rte_eth_tx_burst(out_port, 0, &m, 1);
     if (likely(ret == 1)) {
         port_pkt_stats[out_port].tx_gptu += 1;

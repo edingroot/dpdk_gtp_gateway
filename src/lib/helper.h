@@ -12,4 +12,12 @@ print_rte_ipv4(rte_be32_t addr4)
     printf("%s", inet_ntoa(addr));
 }
 
+static __rte_always_inline void
+print_rte_ipv4_dbg(rte_be32_t addr4)
+{
+#ifdef DEBUG
+    print_rte_ipv4(addr4);
+#endif
+}
+
 #endif /* __HELPER_H_ */

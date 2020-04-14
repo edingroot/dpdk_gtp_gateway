@@ -63,14 +63,14 @@ int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
  */
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 
-int send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add);
+int send_arp_request(uint8_t iface_num, uint32_t dst_ip_addr);
 
 /**
  * @return
  *   - 0 if sent successfully
  *   - A negative number if error occurred
  */
-int send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add);
+int send_arp_reply(uint32_t src_ip_addr, unsigned char *dst_hw_addr, unsigned char *dst_pr_add);
 
 int send_arp(struct rte_mbuf *mbuf, uint8_t port);
 

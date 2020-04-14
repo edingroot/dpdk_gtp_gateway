@@ -60,17 +60,23 @@ arp_in(struct rte_mbuf *mbuf)
 
     struct arp *arp_pkt =
         (struct arp *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + sizeof(struct rte_ether_hdr));
+    uint32_t ip_addr_from = int_addr_from_char(arp_pkt->src_pr_add, 1);
 
     switch (ntohs(arp_pkt->opcode)) {
         case ARP_REQ: {
-            logger_s(LOG_ARP, L_INFO, "\n");
-            logger(LOG_ARP, L_INFO, "[ARP Request]\n");
+            uint32_t ip_addr_to = int_addr_from_char(arp_pkt->dst_pr_add, 1);
 
-            send_arp_reply(arp_pkt->src_hw_add, arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
+            logger_s(LOG_ARP, L_INFO, "\n");
+            logger(LOG_ARP, L_INFO, "[ARP Request] Who has ");
+            print_ipv4(ip_addr_to, L_DEBUG);
+            logger_s(LOG_ARP, L_INFO, "  Tell ");
+            print_ipv4(ip_addr_from, L_DEBUG);
             logger_s(LOG_ARP, L_DEBUG, "\n");
 
-            // uint32_t ip_addr = int_addr_from_char(arp_pkt->src_pr_add, 0);
-            // add_mac(ip_addr, arp_pkt->src_hw_add);
+            send_arp_reply(ip_addr_to, arp_pkt->src_hw_add, arp_pkt->src_pr_add);
+            logger_s(LOG_ARP, L_DEBUG, "\n");
+
+            // add_mac(ip_addr_from, arp_pkt->src_hw_add);
             // logger(LOG_ARP, L_INFO, "seen arp packet\n");
             break;
         }
@@ -78,8 +84,7 @@ arp_in(struct rte_mbuf *mbuf)
             logger_s(LOG_ARP, L_INFO, "\n");
             logger(LOG_ARP, L_INFO, "[ARP Reply]\n");
 
-            uint32_t ip_addr = int_addr_from_char(arp_pkt->src_pr_add, 1);
-            ret = add_mac(ip_addr, arp_pkt->src_hw_add);
+            ret = add_mac(ip_addr_from, arp_pkt->src_hw_add);
             assert(ret == 0);
 
             print_arp_table(L_DEBUG);
@@ -91,7 +96,6 @@ arp_in(struct rte_mbuf *mbuf)
         }
     }
 
-    rte_pktmbuf_free(mbuf);
     fflush(stdout);
     return 0;
 }
@@ -136,15 +140,10 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
 }
 
 int
-send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
+send_arp_request(uint8_t iface_num, uint32_t dst_ip_addr)
 {
     unsigned char dest_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     interface_t *iface = iface_list;
-
-    logger_s(LOG_ARP, L_DEBUG, "\n");
-    logger(LOG_ARP, L_DEBUG, "<ARP Request> for ");
-    print_ipv4(iface->ipv4_addr, L_DEBUG);
-    logger_s(LOG_ARP, L_DEBUG, "\n");
 
     while (iface && iface_num != iface->iface_num) {
         iface = iface->next;
@@ -156,6 +155,13 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
             iface_num);
         return 0;
     }
+
+    logger_s(LOG_ARP, L_DEBUG, "\n");
+    logger(LOG_ARP, L_DEBUG, "<ARP Request> Who has ");
+    print_ipv4(dst_ip_addr, L_DEBUG);
+    logger_s(LOG_ARP, L_INFO, "  Tell ");
+    print_ipv4(iface->ipv4_addr, L_DEBUG);
+    logger_s(LOG_ARP, L_DEBUG, "\n");
 
     struct rte_mbuf *mbuf = get_mbuf();
     assert(likely(mbuf != NULL));
@@ -170,7 +176,7 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
     rte_memcpy(arp_req->src_hw_add, iface->hw_addr, RTE_ETHER_ADDR_LEN);
     rte_memcpy(arp_req->dst_hw_add, dest_mac, RTE_ETHER_ADDR_LEN);
     rte_memcpy(arp_req->src_pr_add, &iface->ipv4_addr, PR_LEN_IPV4);
-    rte_memcpy(arp_req->dst_pr_add, dst_pr_add, PR_LEN_IPV4);
+    rte_memcpy(arp_req->dst_pr_add, &dst_ip_addr, PR_LEN_IPV4);
 
     int ret = send_arp(mbuf, iface->iface_num);
     if (likely(ret == 0)) {
@@ -182,17 +188,10 @@ send_arp_request(uint8_t iface_num, unsigned char *dst_pr_add)
 }
 
 int
-send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned char *dst_pr_add)
+send_arp_reply(uint32_t src_ip_addr, unsigned char *dst_hw_addr, unsigned char *dst_pr_add)
 {
-    uint32_t ip_addr = int_addr_from_char(src_pr_add, 1);
     interface_t *iface = iface_list;
-
-    logger(LOG_ARP, L_DEBUG, "Request IP ");
-    print_ipv4(ip_addr, L_DEBUG);
-    logger_s(LOG_ARP, L_DEBUG, "\n");
-
-    while (iface && ip_addr != iface->ipv4_addr) {
-        // logger(LOG_ARP, L_DEBUG, "Checking for arp ip %d found %d\n", ip_addr, iface->ipv4_addr);
+    while (iface && src_ip_addr != iface->ipv4_addr) {
         iface = iface->next;
     }
 
@@ -212,13 +211,14 @@ send_arp_reply(unsigned char *src_hw_addr, unsigned char *src_pr_add, unsigned c
     arp_reply->pr_len = PR_LEN_IPV4;
     arp_reply->opcode = htons(2);
     rte_memcpy(arp_reply->src_hw_add, iface->hw_addr, RTE_ETHER_ADDR_LEN);
-    rte_memcpy(arp_reply->dst_hw_add, src_hw_addr, RTE_ETHER_ADDR_LEN);
-    rte_memcpy(arp_reply->src_pr_add, src_pr_add, PR_LEN_IPV4);
+    rte_memcpy(arp_reply->dst_hw_add, dst_hw_addr, RTE_ETHER_ADDR_LEN);
+    rte_memcpy(arp_reply->src_pr_add, &src_ip_addr, PR_LEN_IPV4);
     rte_memcpy(arp_reply->dst_pr_add, dst_pr_add, PR_LEN_IPV4);
 
-    logger(LOG_ARP, L_DEBUG, "<ARP Reply> Dst MAC ");
-    print_mac(arp_reply->dst_hw_add, L_DEBUG);
-    logger_s(LOG_ARP, L_DEBUG, "\n");
+    logger(LOG_ARP, L_DEBUG, "<ARP Reply> ");
+    print_ipv4(src_ip_addr, L_DEBUG);
+    logger_s(LOG_ARP, L_DEBUG, "  is at ");
+    print_mac(iface->hw_addr, L_DEBUG);
 
     int ret = send_arp(mbuf, iface->iface_num);
     if (likely(ret == 0)) {
@@ -262,6 +262,8 @@ send_arp(struct rte_mbuf *mbuf, uint8_t port)
     if (unlikely(total_packets_sent != 1)) {
         logger(LOG_ARP, L_CRITICAL, "Error sending arp message\n");
         return -1;
+    } else {
+        logger_s(LOG_ARP, L_DEBUG, " [TX#%d] \n", port);
     }
 
     rte_pktmbuf_free(mbuf);
@@ -310,7 +312,8 @@ void
 print_mac(unsigned char *mac_addr, TraceLevel trace_level)
 {
     int i;
-    for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
+    for (i = 0; i < RTE_ETHER_ADDR_LEN - 1; i++) {
         logger_s(LOG_ARP, trace_level, "%x:", mac_addr[i]);
     }
+    logger_s(LOG_ARP, trace_level, "%x", mac_addr[i]);
 }
