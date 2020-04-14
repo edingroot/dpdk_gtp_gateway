@@ -50,7 +50,7 @@ sigExtraStats(__attribute__((unused)) int signo)
         printf("\033[11;%dH", (15 + 10 * i));
         printf(" %8u ", app_config.gtp_ports[i].gtp_type);
         printf("\033[13;%dH", (15 + 10 * i));
-        printf(" %8u ", app_config.gtp_ports[i].pkt_index);
+        printf(" %8u ", app_config.gtp_ports[i].pkt_index); // not used
     }
 
     for (i = 0; i < GTP_MAX_NUMANODE; i++) {
@@ -328,7 +328,7 @@ show_static_display(void)
         /*LINK_SPEED_STATE*/
         printf("\033[4;%dH", (15 + 10 * i));
         printf(" %5d-%-2s ",
-               ((link.link_speed == ETH_SPEED_NUM_10M) ? 10 : 
+               ((link.link_speed == ETH_SPEED_NUM_10M) ? 10 :
                 (link.link_speed == ETH_SPEED_NUM_100M) ? 100 :
                 (link.link_speed == ETH_SPEED_NUM_1G) ? 1000 :
                 (link.link_speed == ETH_SPEED_NUM_10G) ? 10000 : 0),

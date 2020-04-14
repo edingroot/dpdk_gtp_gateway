@@ -82,8 +82,9 @@ main(int argc, char **argv) {
 
     // Launch thread lcores
     ret = rte_eth_dev_count_avail();
-    for (i = 0; i < ret; i++) {
-        rte_eal_remote_launch(pkt_handler, (void *)&i, i + 1);
+    for (i = 0; i < app_config.gtp_port_count; i++) {
+        uint8_t port_id = app_config.gtp_ports[i].port_num;
+        rte_eal_remote_launch(pkt_handler, (void *)&port_id, i + 1);
     }
 
     // Register signals
@@ -116,6 +117,7 @@ add_interfaces(void)
     uint16_t avail_dev_count = rte_eth_dev_count_avail();
     struct rte_ether_addr addr;
 
+    // Check interfaces in app configs
     if (app_config.gtp_port_count == 0 || app_config.gtp_port_count % 2 != 0) {
         logger(LOG_APP, L_CRITICAL,
             "Number of interface in config (%d) should be even and larger than zero\n",
@@ -126,7 +128,18 @@ add_interfaces(void)
             "Number of interface in config (%d) > avail dpdk eth devices (%d), abort.\n",
             app_config.gtp_port_count, avail_dev_count);
         return -1;
-    } else if (app_config.gtp_port_count != avail_dev_count) {
+    }
+
+    for (i = 0; i < app_config.gtp_port_count; i++) {
+        if (app_config.gtp_ports[i].port_num >= avail_dev_count) {
+            logger(LOG_APP, L_CRITICAL,
+                "Interface index #%d in config >= avail dpdk eth devices (%d), abort.\n",
+                app_config.gtp_ports[i].port_num, avail_dev_count);
+            return -1;
+        }
+    }
+
+    if (app_config.gtp_port_count != avail_dev_count) {
         logger(LOG_APP, L_WARN,
             "Number of interface in config (%d) != avail dpdk eth devices (%d)\n",
             app_config.gtp_port_count, avail_dev_count);
@@ -287,9 +300,9 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
 
     // Test: forward all non-gtpu packets
     // int32_t ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);
-    // if (likely(ret == 1)) {
-    //     return;
-    // }
+    // printf(" fwd ret=%d\n", ret);
+    // assert(likely(ret == 1));
+    // return;
 
 out_flush:
     fflush(stdout);

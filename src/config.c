@@ -68,7 +68,7 @@ init_config_hash(int with_locks)
     assert((intptr_t)app_config.ue_ipv4_hash > 0);
 }
 
-static int 
+static int
 load_global_entries(struct rte_cfgfile *file)
 {
     const char *section_name = "Global";
@@ -97,15 +97,15 @@ load_global_entries(struct rte_cfgfile *file)
     return 0;
 }
 
-static int 
-load_intf_entries(struct rte_cfgfile *file, const char *section_name)
+static int
+load_intf_entries(struct rte_cfgfile *file, const char *section_name, int32_t intf_idx)
 {
-    int32_t j = 0, idx, ret = -1;
+    int32_t j = 0, port_num, ret = -1;
     struct rte_cfgfile_entry entries[32];
-    
+
     ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
-    idx = get_int(section_name + strlen(GTP_CFG_TAG_INTF));
-    app_config.gtp_ports[idx].port_num = idx;
+    port_num = get_int(section_name + strlen(GTP_CFG_TAG_INTF));
+    app_config.gtp_ports[intf_idx].port_num = port_num;
 
     for (j = 0; j < ret; j++) {
         printf("\n %15s : %-15s", entries[j].name, entries[j].value);
@@ -113,17 +113,17 @@ load_intf_entries(struct rte_cfgfile *file, const char *section_name)
         switch (strlen(entries[j].name)) {
             case 4:
                 if (STRCMP("ipv4", entries[j].name) == 0) {
-                    app_config.gtp_ports[idx].ipv4 = inet_addr(entries[j].value);
+                    app_config.gtp_ports[intf_idx].ipv4 = inet_addr(entries[j].value);
                 } else if (STRCMP("type", entries[j].name) == 0) {
-                    app_config.gtp_ports[idx].gtp_type = 
+                    app_config.gtp_ports[intf_idx].gtp_type =
                         (STRCMP("GTPU", entries[j].value) == 0) ? CFG_VAL_GTPU : 0xff;
                 }
                 break;
 
-            case 5:
-                if (STRCMP("index", entries[j].name) == 0)
-                    app_config.gtp_ports[idx].pkt_index = atoi(entries[j].value);
-                break;
+            // case 5:
+            //     if (STRCMP("index", entries[j].name) == 0)
+            //         app_config.gtp_ports[intf_idx].pkt_index = atoi(entries[j].value);
+            //     break;
 
             default:
                 printf("\n ERROR: unexpected entry %s with value %s",
@@ -135,13 +135,13 @@ load_intf_entries(struct rte_cfgfile *file, const char *section_name)
     return 0;
 }
 
-static int 
+static int
 load_tunnel_entries(struct rte_cfgfile *file, const char *section_name)
 {
     int32_t j = 0, idx, ret = -1;
     struct rte_cfgfile_entry entries[32];
     confg_gtp_tunnel_t *gtp_tunnel;
-    
+
     ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
     idx = get_int(section_name + strlen(GTP_CFG_TAG_TUNNEL));
     gtp_tunnel = &app_config.gtp_tunnels[idx];
@@ -178,7 +178,7 @@ int32_t
 load_gtp_config(void)
 {
     struct rte_cfgfile *file = NULL;
-    int32_t i = 0, ret;
+    int32_t i = 0, intf_idx = 0, ret;
     char **section_names = NULL;
 
     init_config_hash(0);
@@ -190,7 +190,7 @@ load_gtp_config(void)
     }
 
     printf("\n Loading config entries:");
-    
+
     int32_t intf_count = rte_cfgfile_num_sections(file, GTP_CFG_TAG_INTF, strlen(GTP_CFG_TAG_INTF));
     assert(intf_count <= GTP_CFG_MAX_PORTS);
     app_config.gtp_port_count = intf_count;
@@ -203,7 +203,7 @@ load_gtp_config(void)
     section_names = malloc(section_count * sizeof(char *));
     for (i = 0; i < section_count; i++)
         section_names[i] = malloc(GTP_CFG_MAX_KEYLEN + 1);
-    
+
     rte_cfgfile_sections(file, section_names, section_count);
 
     for (i = 0; i < section_count; i++) {
@@ -214,14 +214,14 @@ load_gtp_config(void)
             ret = load_global_entries(file);
             assert(ret == 0);
         } else if (STRNCMP(GTP_CFG_TAG_INTF, section_names[i], strlen(GTP_CFG_TAG_INTF)) == 0) {
-            ret = load_intf_entries(file, section_names[i]);
+            ret = load_intf_entries(file, section_names[i], intf_idx++);
             assert(ret == 0);
         } else if (STRNCMP(GTP_CFG_TAG_TUNNEL, section_names[i], strlen(GTP_CFG_TAG_TUNNEL)) == 0) {
             ret = load_tunnel_entries(file, section_names[i]);
             assert(ret == 0);
         }
     } /* per section */
-    
+
     ret = rte_cfgfile_close(file);
     assert(ret == 0);
 
