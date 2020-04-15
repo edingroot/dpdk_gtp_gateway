@@ -90,6 +90,7 @@ load_global_entries(struct rte_cfgfile *file)
             default:
                 printf("\n ERROR: unexpected entry %s with value %s",
                         entries[j].name, entries[j].value);
+                fflush(stdout);
                 return -1;
         } /* update per entry */
     } /* iterate entries */
@@ -128,6 +129,7 @@ load_intf_entries(struct rte_cfgfile *file, const char *section_name, int32_t in
             default:
                 printf("\n ERROR: unexpected entry %s with value %s",
                         entries[j].name, entries[j].value);
+                fflush(stdout);
                 return -1;
         } /* update per entry */
     } /* iterate entries */
@@ -161,6 +163,7 @@ load_tunnel_entries(struct rte_cfgfile *file, const char *section_name)
         } else {
             printf("\n ERROR: unexpected entry %s with value %s\n",
                 entries[j].name, entries[j].value);
+            fflush(stdout);
             return -1;
         }
     } /* iterate entries */

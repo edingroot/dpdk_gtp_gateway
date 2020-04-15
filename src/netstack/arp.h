@@ -41,7 +41,7 @@ struct arp {
     unsigned char src_pr_add[PR_LEN_IPV4];
     unsigned char dst_hw_add[RTE_ETHER_ADDR_LEN];
     unsigned char dst_pr_add[PR_LEN_IPV4];
-} __attribute__((__packed__));
+} __attribute__((__packed__)) __attribute__((aligned(2)));
 
 typedef struct arp_entry_s {
     uint32_t ipv4_addr; // host format (before htonl)
@@ -49,7 +49,19 @@ typedef struct arp_entry_s {
 } arp_entry_t;
 
 int arp_init(int with_locks);
+
 int arp_in(struct rte_mbuf *mbuf);
+int send_arp_request(uint32_t dst_ip_addr, uint8_t port);
+
+/**
+ * @return
+ *   - 0 if sent successfully
+ *   - A negative number if error occurred
+ */
+int send_arp_reply(uint32_t src_ip_addr, unsigned char *dst_hw_addr,
+                   unsigned char *dst_pr_add);
+
+int send_arp(struct rte_mbuf *mbuf, uint8_t port);
 
 int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 
@@ -62,17 +74,6 @@ int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
  *   - A negative number if error occurred
  */
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
-
-int send_arp_request(uint8_t iface_num, uint32_t dst_ip_addr);
-
-/**
- * @return
- *   - 0 if sent successfully
- *   - A negative number if error occurred
- */
-int send_arp_reply(uint32_t src_ip_addr, unsigned char *dst_hw_addr, unsigned char *dst_pr_add);
-
-int send_arp(struct rte_mbuf *mbuf, uint8_t port);
 
 void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);
 void print_arp_table(TraceLevel trace_level);

@@ -11,7 +11,7 @@
 #include "arp.h"
 
 interface_t *iface_list = NULL;
-interface_t *num_iface_map[MAX_INTERFACES] = {0};
+interface_t *port_iface_map[MAX_INTERFACES] = {0};
 
 uint32_t
 int_addr_from_char(unsigned char *address, uint8_t order)
@@ -22,7 +22,7 @@ int_addr_from_char(unsigned char *address, uint8_t order)
         ip_add = ip_add << 8;
         ip_add |= order ? address[3 - i] : address[i];
     }
-    
+
     return ip_add;
 }
 
@@ -30,7 +30,7 @@ void
 add_interface(interface_t *iface)
 {
     interface_t *ptr = malloc(sizeof(interface_t));
-    
+
     memcpy(ptr, iface, sizeof(interface_t));
     ptr->next = NULL;
 
@@ -40,8 +40,8 @@ add_interface(interface_t *iface)
         iface_list->next = ptr;
     }
 
-    if (ptr->iface_num + 1 < MAX_INTERFACES) {
-        num_iface_map[ptr->iface_num] = ptr;
+    if (ptr->port + 1 < MAX_INTERFACES) {
+        port_iface_map[ptr->port] = ptr;
     } else {
         printf("ERROR :: interface number more than max\n");
     }

@@ -60,7 +60,7 @@ SRCS-y := $(LIB_DIR)/logger.c $(LIB_DIR)/pktbuf.c \
 		  $(SRC_DIR)/main.c
 
 CFLAGS += -std=gnu99 -g -O3 $(DEFINE_FLAGS)
-# CFLAGS += -Ofast
+# CFLAGS += -std=gnu99 -Ofast $(DEFINE_FLAGS)
 CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk

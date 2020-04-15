@@ -16,7 +16,7 @@
 /* EXTERN */
 extern app_confg_t app_config;
 extern interface_t *iface_list;
-extern interface_t *num_iface_map[MAX_INTERFACES];
+extern interface_t *port_iface_map[MAX_INTERFACES];
 extern pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS];
 
 /* DEFINES */
@@ -79,7 +79,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
 
     eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
     rte_ether_addr_copy(
-        (const struct rte_ether_addr *)num_iface_map[out_port]->hw_addr,
+        (const struct rte_ether_addr *)port_iface_map[out_port]->hw_addr,
         (struct rte_ether_addr *)eth_hdr->s_addr.addr_bytes);
 
     ret = get_mac(inner_ip_hdr->dst_addr, eth_hdr->d_addr.addr_bytes);
@@ -91,7 +91,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port,
         // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
-        send_arp_request(out_port, inner_ip_hdr->dst_addr);
+        send_arp_request(inner_ip_hdr->dst_addr, out_port);
         return 0;
     }
 
@@ -133,7 +133,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
 
     // Send to another port
     uint16_t out_port = port ^ 1;
-    interface_t *out_iface = num_iface_map[out_port];
+    interface_t *out_iface = port_iface_map[out_port];
 
     struct rte_ipv4_hdr *ip_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1));
     struct rte_udp_hdr *udp_hdr = (struct rte_udp_hdr *)((char *)(ip_hdr + 1));
@@ -154,7 +154,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
         // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
-        send_arp_request(out_port, gtp_tunnel->ran_ipv4);
+        send_arp_request(gtp_tunnel->ran_ipv4, out_port);
         return 0;
     }
 

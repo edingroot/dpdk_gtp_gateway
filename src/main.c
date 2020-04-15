@@ -83,8 +83,7 @@ main(int argc, char **argv) {
     // Launch thread lcores
     ret = rte_eth_dev_count_avail();
     for (i = 0; i < app_config.gtp_port_count; i++) {
-        uint8_t port_id = app_config.gtp_ports[i].port_num;
-        rte_eal_remote_launch(pkt_handler, (void *)&port_id, i + 1);
+        rte_eal_remote_launch(pkt_handler, (void *)&app_config.gtp_ports[i].port_num, i + 1);
     }
 
     // Register signals
@@ -141,16 +140,19 @@ add_interfaces(void)
 
     if (app_config.gtp_port_count != avail_dev_count) {
         logger(LOG_APP, L_WARN,
-            "Number of interface in config (%d) != avail dpdk eth devices (%d)\n",
+            "Notice: number of interface in config (%d) != avail dpdk eth devices (%d)\n",
             app_config.gtp_port_count, avail_dev_count);
     }
 
-    for (i = 0; i < rte_eth_dev_count_avail(); i++) {
+    // Add interface
+    for (i = 0; i < app_config.gtp_port_count; i++) {
+        confg_gtp_port_t *port_config = &app_config.gtp_ports[i];
         interface_t iface;
-        rte_eth_macaddr_get(i, &addr);
 
-        iface.iface_num = i;
-        iface.ipv4_addr = app_config.gtp_ports[i].ipv4;
+        rte_eth_macaddr_get(port_config->port_num, &addr);
+
+        iface.port = port_config->port_num;
+        iface.ipv4_addr = port_config->ipv4;
         memcpy(iface.hw_addr, addr.addr_bytes, sizeof(iface.hw_addr));
 
         add_interface(&iface);
@@ -222,6 +224,18 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         eth_hdr->d_addr.addr_bytes[0], eth_hdr->d_addr.addr_bytes[1],
         eth_hdr->d_addr.addr_bytes[2], eth_hdr->d_addr.addr_bytes[3],
         eth_hdr->d_addr.addr_bytes[4], eth_hdr->d_addr.addr_bytes[5]);
+
+    // printf_dbg("smac: %x:%x:%x:%x:%x:%x) ",
+    //     eth_hdr->s_addr.addr_bytes[0], eth_hdr->s_addr.addr_bytes[1],
+    //     eth_hdr->s_addr.addr_bytes[2], eth_hdr->s_addr.addr_bytes[3],
+    //     eth_hdr->s_addr.addr_bytes[4], eth_hdr->s_addr.addr_bytes[5]);
+
+    // Test: forward all non-gtpu packets
+    // int fwd_port = 1;
+    // int ret = rte_eth_tx_burst(fwd_port, 0, &m, 1);
+    // printf(" fwd to port#%d ret=%d\n", fwd_port, ret);
+    // assert(likely(ret == 1));
+    // return;
 
     // Ether type: IPv4 (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) = 0x8)
     if (likely(eth_hdr->ether_type == 0x8)) {
@@ -297,12 +311,6 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
             goto out_flush;
         }
     } /* (likely(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))) */
-
-    // Test: forward all non-gtpu packets
-    // int32_t ret = rte_eth_tx_burst(port ^ 1, 0, &m, 1);
-    // printf(" fwd ret=%d\n", ret);
-    // assert(likely(ret == 1));
-    // return;
 
 out_flush:
     fflush(stdout);
