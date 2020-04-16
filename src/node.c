@@ -17,7 +17,7 @@ static const struct rte_eth_conf portConf = {
     },
     .txmode = {
         .mq_mode = ETH_MQ_TX_NONE,
-        .offloads = DEV_TX_OFFLOAD_IPV4_CKSUM | 
+        .offloads = DEV_TX_OFFLOAD_IPV4_CKSUM |
                     DEV_TX_OFFLOAD_UDP_CKSUM,
     },
 };
@@ -60,7 +60,7 @@ populate_node_info(void)
         printf("\n - Driver: %s", devInfo.driver_name);
         printf("\n - If index: %d", devInfo.if_index);
         printf("\n - MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8
-			   " %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8,
+               " %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8,
                addr.addr_bytes[0], addr.addr_bytes[1],
                addr.addr_bytes[2], addr.addr_bytes[3],
                addr.addr_bytes[4], addr.addr_bytes[5]);

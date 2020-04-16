@@ -55,9 +55,9 @@ CFLAGS += -I${LIB_DIR}
 LDFLAGS += -L$(LIB_DIR)
 
 SRCS-y := $(LIB_DIR)/logger.c $(LIB_DIR)/pktbuf.c \
-		  $(SRC_DIR)/netstack/arp.c $(SRC_DIR)/netstack/ether.c \
-		  $(SRC_DIR)/node.c $(SRC_DIR)/stats.c $(SRC_DIR)/config.c \
-		  $(SRC_DIR)/main.c
+          $(SRC_DIR)/netstack/arp.c $(SRC_DIR)/netstack/ether.c \
+          $(SRC_DIR)/node.c $(SRC_DIR)/stats.c $(SRC_DIR)/config.c \
+          $(SRC_DIR)/main.c
 
 CFLAGS += -std=gnu99 -g -O3 $(DEFINE_FLAGS)
 # CFLAGS += -std=gnu99 -Ofast $(DEFINE_FLAGS)

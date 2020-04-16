@@ -11,7 +11,7 @@ mbuf_init(void)
 {
     if (pktmbuf_pool)
         return -1;
-    
+
     pktmbuf_pool = rte_mempool_create("mbuf_pool", NB_MBUF,
                     MBUF_SIZE, 32,
                     sizeof(struct rte_pktmbuf_pool_private),
@@ -34,7 +34,7 @@ get_mbuf(void)
     assert(unlikely(pktmbuf_pool != NULL));
 
     if (unlikely((buf = rte_pktmbuf_alloc(pktmbuf_pool)) == NULL))
-		return NULL;
+        return NULL;
     else
         return buf;
 }

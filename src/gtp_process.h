@@ -20,21 +20,21 @@ extern interface_t *port_iface_map[MAX_INTERFACES];
 extern pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS];
 
 /* DEFINES */
-#define GTP1U_PORT	2152
-#define GTP_TPDU	255
+#define GTP1U_PORT  2152
+#define GTP_TPDU    255
 
 // According to 3GPP TS 29.060
 typedef struct gtpv1_header {
-	uint8_t     flags;
-	uint8_t     type;
-	uint16_t    length;
-	uint32_t    teid;
+    uint8_t     flags;
+    uint8_t     type;
+    uint16_t    length;
+    uint32_t    teid;
 } __attribute__ ((packed)) gtpv1_t;
 
-#define GTP1_F_NPDU	    0x01
-#define GTP1_F_SEQ	    0x02
-#define GTP1_F_EXTHDR	0x04
-#define GTP1_F_MASK	    0x07
+#define GTP1_F_NPDU     0x01
+#define GTP1_F_SEQ      0x02
+#define GTP1_F_EXTHDR   0x04
+#define GTP1_F_MASK     0x07
 
 /* FUNCTION DEFS */
 static __rte_always_inline void
@@ -202,11 +202,11 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
 static __rte_always_inline void
 gtpv1_set_header(gtpv1_t *gtp1_hdr, uint16_t payload_len, uint32_t teid)
 {
-    /* Bits 8  7  6  5  4  3  2	 1
-     *	  +--+--+--+--+--+--+--+--+
-     *	  |version |PT| 0| E| S|PN|
-     *	  +--+--+--+--+--+--+--+--+
-     *	    0  0  1  1	0  0  0  0
+    /* Bits 8  7  6  5  4  3  2  1
+     *    +--+--+--+--+--+--+--+--+
+     *    |version |PT| 0| E| S|PN|
+     *    +--+--+--+--+--+--+--+--+
+     *    0  0  1  1  0  0  0  0
      */
     gtp1_hdr->flags = 0x30; // v1, GTP-non-prime
     gtp1_hdr->type = GTP_TPDU;
@@ -214,7 +214,7 @@ gtpv1_set_header(gtpv1_t *gtp1_hdr, uint16_t payload_len, uint32_t teid)
     gtp1_hdr->teid = htonl(teid);
 
     /* TODO: Suppport for extension header, sequence number and N-PDU.
-     *	 Update the length field if any of them is available.
+     *  Update the length field if any of them is available.
      */
 }
 

@@ -36,17 +36,17 @@ arp_init(int with_locks)
 
     params.name = "arp_table";
     params.entries = MAX_ARP_ENTRIES;
-	params.key_len = sizeof(uint32_t);
-	params.hash_func = rte_jhash;
-	params.hash_func_init_val = 0;
-	params.socket_id = rte_socket_id();
+    params.key_len = sizeof(uint32_t);
+    params.hash_func = rte_jhash;
+    params.hash_func_init_val = 0;
+    params.socket_id = rte_socket_id();
 
     if (with_locks) {
-		params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
-				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
-	} else {
-		params.extra_flag = 0;
+        params.extra_flag =
+            RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+            | RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+    } else {
+        params.extra_flag = 0;
     }
 
     assert(rte_hash_find_existing(params.name) == NULL);

@@ -31,16 +31,16 @@ init_config_hash(int with_locks)
     // Initialize teid_in_hash
     params.name = "teid_in_hash";
     params.entries = GTP_CFG_MAX_TUNNELS;
-	params.key_len = sizeof(uint32_t);
-	params.hash_func = rte_jhash;
-	params.hash_func_init_val = 0;
-	params.socket_id = rte_socket_id();
+    params.key_len = sizeof(uint32_t);
+    params.hash_func = rte_jhash;
+    params.hash_func_init_val = 0;
+    params.socket_id = rte_socket_id();
     if (with_locks) {
-		params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
-				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
-	} else {
-		params.extra_flag = 0;
+        params.extra_flag =
+            RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+            | RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+    } else {
+        params.extra_flag = 0;
     }
 
     assert(rte_hash_find_existing(params.name) == NULL);
@@ -51,16 +51,16 @@ init_config_hash(int with_locks)
     memset(&params, 0, sizeof(struct rte_hash_parameters));
     params.name = "ue_ipv4_hash";
     params.entries = GTP_CFG_MAX_TUNNELS;
-	params.key_len = sizeof(uint32_t);
-	params.hash_func = rte_jhash;
-	params.hash_func_init_val = 0;
-	params.socket_id = rte_socket_id();
+    params.key_len = sizeof(uint32_t);
+    params.hash_func = rte_jhash;
+    params.hash_func_init_val = 0;
+    params.socket_id = rte_socket_id();
     if (with_locks) {
-		params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
-				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
-	} else {
-		params.extra_flag = 0;
+        params.extra_flag =
+            RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+            | RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+    } else {
+        params.extra_flag = 0;
     }
 
     assert(rte_hash_find_existing(params.name) == NULL);
