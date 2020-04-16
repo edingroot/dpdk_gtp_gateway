@@ -83,7 +83,22 @@ arp_in(struct rte_mbuf *mbuf)
         }
         case ARP_REPLY: {
             logger_s(LOG_ARP, L_INFO, "\n");
-            logger(LOG_ARP, L_INFO, "[ARP Reply]\n");
+            logger(LOG_ARP, L_INFO, "[ARP Reply] ");
+            print_ipv4(ip_addr_from, L_DEBUG);
+            logger_s(LOG_ARP, L_INFO, "  is at ");
+            print_mac(arp_pkt->src_hw_add, L_DEBUG);
+            logger_s(LOG_ARP, L_DEBUG, "\n");
+
+            // Check if dst mac is hosted
+            interface_t *iface = iface_list;
+            while (iface && memcmp(&arp_pkt->dst_hw_add, &iface->hw_addr, RTE_ETHER_ADDR_LEN)) {
+                iface = iface->next;
+            }
+
+            if (unlikely(iface == NULL)) {
+                logger(LOG_ARP, L_INFO, "ARP reply ignored, mac not hosted\n");
+                return -1;
+            }
 
             ret = add_mac(ip_addr_from, arp_pkt->src_hw_add);
             assert(ret == 0);
@@ -250,7 +265,7 @@ int
 add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
 {
     int ret;
-    logger(LOG_ARP, L_INFO, "Adding to arp table IP ");
+    logger(LOG_ARP, L_INFO, "Adding to arp table: IP ");
     print_ipv4(ipv4_addr, L_INFO);
     logger_s(LOG_ARP, L_INFO, " MAC ");
     print_mac(mac_addr, L_INFO);
