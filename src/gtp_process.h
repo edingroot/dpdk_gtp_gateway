@@ -42,8 +42,7 @@ gtpv1_set_header(gtpv1_t *gtp_hdr, uint16_t payload_len, uint32_t teid);
 
 /* FUNCTIONS */
 static __rte_always_inline int32_t
-process_gtpv1(struct rte_mbuf *m, uint8_t port,
-              struct rte_ipv4_hdr *outer_ip_hdr, gtpv1_t *rx_gtp_hdr)
+process_gtpv1(struct rte_mbuf *m, uint8_t port, gtpv1_t *rx_gtp_hdr)
 {
     int32_t ret;
     struct rte_ipv4_hdr *inner_ip_hdr = (struct rte_ipv4_hdr *)((char *)(rx_gtp_hdr + 1));

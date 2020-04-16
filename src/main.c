@@ -281,7 +281,7 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
                 }
 
                 // GTP decap
-                if (likely(process_gtpv1(m, port, ip_hdr, gtp1_hdr) > 0)) {
+                if (likely(process_gtpv1(m, port, gtp1_hdr) > 0)) {
                     return;
                 } else {
                     printf(" ERR(decap failed)\n");
