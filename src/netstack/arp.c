@@ -26,6 +26,9 @@ extern interface_t *port_iface_map[MAX_INTERFACES];
 /* GLOBALS */
 static struct rte_hash *arp_table = NULL; // [uint32_t ipv4_addr] = arp_entry
 
+static __rte_always_inline int
+send_arp_reply_inplace(struct rte_mbuf *m, uint32_t src_ip_addr, struct arp *arp_hdr);
+
 int
 arp_init(int with_locks)
 {
@@ -59,13 +62,13 @@ arp_in(struct rte_mbuf *mbuf)
     assert(mbuf->buf_len >= sizeof(struct arp));
     assert(rte_pktmbuf_data_len(mbuf) >= (sizeof(struct arp) + sizeof(struct rte_ether_hdr)));
 
-    struct arp *arp_pkt =
+    struct arp *arp_hdr =
         (struct arp *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + sizeof(struct rte_ether_hdr));
-    uint32_t ip_addr_from = int_addr_from_char(arp_pkt->src_pr_add, 1);
+    uint32_t ip_addr_from = int_addr_from_char(arp_hdr->src_pr_add, 1);
 
-    switch (ntohs(arp_pkt->opcode)) {
+    switch (ntohs(arp_hdr->opcode)) {
         case ARP_REQ: {
-            uint32_t ip_addr_to = int_addr_from_char(arp_pkt->dst_pr_add, 1);
+            uint32_t ip_addr_to = int_addr_from_char(arp_hdr->dst_pr_add, 1);
 
             logger_s(LOG_ARP, L_INFO, "\n");
             logger(LOG_ARP, L_INFO, "[ARP Request] Who has ");
@@ -74,11 +77,17 @@ arp_in(struct rte_mbuf *mbuf)
             print_ipv4(ip_addr_from, L_DEBUG);
             logger_s(LOG_ARP, L_DEBUG, "\n");
 
-            send_arp_reply(ip_addr_to, arp_pkt->src_hw_add, arp_pkt->src_pr_add);
-            logger_s(LOG_ARP, L_DEBUG, "\n");
+            // send_arp_reply(ip_addr_to, arp_hdr->src_hw_add, arp_hdr->src_pr_add);
+            ret = send_arp_reply_inplace(mbuf, ip_addr_to, arp_hdr);
+            if (unlikely(ret != 1)) {
+                rte_pktmbuf_free(mbuf);
+            }
 
-            // add_mac(ip_addr_from, arp_pkt->src_hw_add);
+            // add_mac(ip_addr_from, arp_hdr->src_hw_add);
             // logger(LOG_ARP, L_INFO, "seen arp packet\n");
+
+            print_arp_table(L_DEBUG);
+            logger_s(LOG_ARP, L_DEBUG, "\n");
             break;
         }
         case ARP_REPLY: {
@@ -86,25 +95,27 @@ arp_in(struct rte_mbuf *mbuf)
             logger(LOG_ARP, L_INFO, "[ARP Reply] ");
             print_ipv4(ip_addr_from, L_DEBUG);
             logger_s(LOG_ARP, L_INFO, "  is at ");
-            print_mac(arp_pkt->src_hw_add, L_DEBUG);
+            print_mac(arp_hdr->src_hw_add, L_DEBUG);
             logger_s(LOG_ARP, L_DEBUG, "\n");
 
             // Check if dst mac is hosted
             interface_t *iface = iface_list;
-            while (iface && memcmp(&arp_pkt->dst_hw_add, &iface->hw_addr, RTE_ETHER_ADDR_LEN)) {
+            while (iface && memcmp(&arp_hdr->dst_hw_add, &iface->hw_addr, RTE_ETHER_ADDR_LEN)) {
                 iface = iface->next;
             }
 
             if (unlikely(iface == NULL)) {
                 logger(LOG_ARP, L_INFO, "ARP reply ignored, mac not hosted\n");
+                rte_pktmbuf_free(mbuf);
                 return -1;
             }
 
-            ret = add_mac(ip_addr_from, arp_pkt->src_hw_add);
+            ret = add_mac(ip_addr_from, arp_hdr->src_hw_add);
             assert(ret == 0);
 
             print_arp_table(L_DEBUG);
             logger_s(LOG_ARP, L_DEBUG, "\n");
+            rte_pktmbuf_free(mbuf);
             break;
         }
         default: {
@@ -159,6 +170,50 @@ send_arp_request(uint32_t dst_ip_addr, uint8_t port)
     }
 }
 
+// Faster
+static __rte_always_inline int
+send_arp_reply_inplace(struct rte_mbuf *m, uint32_t src_ip_addr, struct arp *arp_hdr)
+{
+    interface_t *iface = iface_list;
+    while (iface && src_ip_addr != iface->ipv4_addr) {
+        iface = iface->next;
+    }
+
+    if (unlikely(iface == NULL)) {
+        logger(LOG_ARP, L_INFO, "ARP request failed, address not hosted\n");
+        return -1;
+    }
+
+    struct rte_ether_hdr *eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+
+    // Switch src and dst data and set bonding MAC
+    rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
+    rte_ether_addr_copy((struct rte_ether_addr *)&iface->hw_addr, &eth_hdr->s_addr);
+
+    arp_hdr->opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
+    rte_memcpy(arp_hdr->dst_hw_add, arp_hdr->src_hw_add, RTE_ETHER_ADDR_LEN);
+    rte_memcpy(arp_hdr->src_hw_add, iface->hw_addr, RTE_ETHER_ADDR_LEN);
+    rte_memcpy(arp_hdr->src_pr_add, &src_ip_addr, PR_LEN_IPV4);
+    rte_memcpy(arp_hdr->dst_pr_add, arp_hdr->src_pr_add, PR_LEN_IPV4);
+
+    logger(LOG_ARP, L_DEBUG, "<ARP Reply> ");
+    print_ipv4(src_ip_addr, L_DEBUG);
+    logger_s(LOG_ARP, L_DEBUG, "  is at ");
+    print_mac(iface->hw_addr, L_DEBUG);
+
+    // TODO: fix the below, port should be dfrom routing
+    logger_s(LOG_ARP, L_DEBUG, " [TX#%d]", iface->port);
+    const int queue_id = 0;
+    const int ret = rte_eth_tx_burst(iface->port, queue_id, &m, 1);
+    if (unlikely(ret != 1)) {
+        logger_s(LOG_ARP, L_CRITICAL, " ERR(rte_eth_tx_burst=%d)\n", ret);
+        return -1;
+    } else {
+        logger_s(LOG_ARP, L_DEBUG, "\n");
+        return 0;
+    }
+}
+
 int
 send_arp_reply(uint32_t src_ip_addr, unsigned char *dst_hw_addr,
                unsigned char *dst_pr_add)
@@ -206,38 +261,36 @@ int
 send_arp(struct rte_mbuf *mbuf, uint8_t port)
 {
     int i;
-    struct arp *arp_pkt = (struct arp *)rte_pktmbuf_mtod(mbuf, struct arp *);
+    struct arp *arp_hdr = (struct arp *)rte_pktmbuf_mtod(mbuf, struct arp *);
     struct rte_ether_hdr *eth =
         (struct rte_ether_hdr *)rte_pktmbuf_prepend(mbuf, sizeof(struct rte_ether_hdr));
 
     eth->ether_type = htons(RTE_ETHER_TYPE_ARP);
 
-    if (arp_pkt->opcode == ntohs(ARP_REQ)) {
-        rte_memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->src_hw_add));
+    if (arp_hdr->opcode == ntohs(ARP_REQ)) {
+        rte_memcpy(&eth->s_addr.addr_bytes[0], arp_hdr->src_hw_add, sizeof(arp_hdr->src_hw_add));
         for (i = 0; i < 6; i++) {
             eth->d_addr.addr_bytes[i] = 0xff;
         }
-    } else if (arp_pkt->opcode == ntohs(ARP_REPLY)) {
-        rte_memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->src_hw_add));
-        rte_memcpy(&eth->d_addr.addr_bytes[0], arp_pkt->dst_hw_add, sizeof(arp_pkt->dst_hw_add));
+    } else if (arp_hdr->opcode == ntohs(ARP_REPLY)) {
+        rte_memcpy(&eth->s_addr.addr_bytes[0], arp_hdr->src_hw_add, sizeof(arp_hdr->src_hw_add));
+        rte_memcpy(&eth->d_addr.addr_bytes[0], arp_hdr->dst_hw_add, sizeof(arp_hdr->dst_hw_add));
     } else {
-        logger(LOG_ARP, L_CRITICAL, "Invalid opcode %d", arp_pkt->opcode);
+        logger(LOG_ARP, L_CRITICAL, "Invalid opcode %d", arp_hdr->opcode);
         return -1;
     }
 
     // TODO: fix the below, port should be dfrom routing
     logger_s(LOG_ARP, L_DEBUG, " [TX#%d]", port);
     const int queue_id = 0;
-    const uint16_t total_packets_sent = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
-    if (unlikely(total_packets_sent != 1)) {
-        logger_s(LOG_ARP, L_CRITICAL, " ERR(rte_eth_tx_burst=%d)\n", total_packets_sent);
+    const int ret = rte_eth_tx_burst(port, queue_id, &mbuf, 1);
+    if (unlikely(ret != 1)) {
+        logger_s(LOG_ARP, L_CRITICAL, " ERR(rte_eth_tx_burst=%d)\n", ret);
         return -1;
     } else {
         logger_s(LOG_ARP, L_DEBUG, "\n");
+        return 0;
     }
-
-    rte_pktmbuf_free(mbuf);
-    return 0;
 }
 
 // Performance critical

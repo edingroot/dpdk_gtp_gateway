@@ -132,6 +132,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
             rte_pktmbuf_prepend(m, (uint16_t)outer_hdr_len);
 
     // Send to another port
+    // TODO: fix for the odd first port number
     uint16_t out_port = port ^ 1;
     interface_t *out_iface = port_iface_map[out_port];
 
