@@ -59,7 +59,8 @@ SRCS-y := $(LIB_DIR)/logger.c $(LIB_DIR)/pktbuf.c \
           $(SRC_DIR)/node.c $(SRC_DIR)/stats.c $(SRC_DIR)/config.c \
           $(SRC_DIR)/main.c
 
-CFLAGS += -std=gnu99 -g -O3 $(DEFINE_FLAGS)
+CFLAGS += -std=gnu99 -g -O0 $(DEFINE_FLAGS)
+# CFLAGS += -std=gnu99 -g -O3 $(DEFINE_FLAGS)
 # CFLAGS += -std=gnu99 -Ofast $(DEFINE_FLAGS)
 CFLAGS += $(WERROR_FLAGS)
 

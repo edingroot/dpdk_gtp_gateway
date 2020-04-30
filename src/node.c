@@ -4,8 +4,11 @@
 
 #include "pktbuf.h"
 
-/* GLOBAL */
+/* GLOBALS */
 numa_info_t numa_node_info[GTP_MAX_NUMANODE];
+
+/* EXTERN */
+extern app_confg_t app_config;
 
 static const struct rte_eth_conf portConf = {
     .rxmode = {
@@ -26,37 +29,41 @@ int32_t
 populate_node_info(void)
 {
     int32_t i = 0, socketId = -1, lcoreIndex = 0, enable = 0;
-    uint8_t coreCount, portCount;
     struct rte_eth_dev_info devInfo;
     struct rte_ether_addr addr;
 
     /* fetch total lcore count under DPDK */
-    coreCount = rte_lcore_count();
-    for (i = 0; i < coreCount; i++) {
-        socketId = rte_lcore_to_socket_id(i);
-        lcoreIndex = rte_lcore_index(i);
-        enable = rte_lcore_is_enabled(i);
+    uint32_t lc;
+    RTE_LCORE_FOREACH(lc) {
+        socketId = rte_lcore_to_socket_id(lc);
+        lcoreIndex = rte_lcore_index(lc);
+        enable = rte_lcore_is_enabled(lc);
 
-        printf("\n Logical %d Physical %d Socket %d enabled %d", i, lcoreIndex, socketId, enable);
+        printf("\n Logical %d Physical %d Socket %d enabled %d", lcoreIndex, lc, socketId, enable);
 
         if (likely(enable)) {
             /* classify the lcore info per NUMA node */
             numa_node_info[socketId].lcoreAvail = numa_node_info[socketId].lcoreAvail | (1 << lcoreIndex);
             numa_node_info[socketId].lcoreTotal += 1;
         } else {
-            rte_panic("ERROR: Lcore %d Socket %d not enabled\n", lcoreIndex, socketId);
+            rte_panic("\nERROR: Lcore %d Socket %d not enabled\n", lcoreIndex, socketId);
             exit(EXIT_FAILURE);
         }
     }
     printf("\n");
 
     /* Create mempool per numa node based on interface available */
-    portCount = rte_eth_dev_count_avail();
+    uint8_t portCount = rte_eth_dev_count_avail();
     for (i = 0; i < portCount; i++) {
         rte_eth_dev_info_get(i, &devInfo);
         rte_eth_macaddr_get(i, &addr);
 
-        printf("\n [Interface %d]", i);
+        if (rte_hash_lookup(app_config.gtp_port_hash, &i) >= 0) {
+            printf("\n [Interface %d *GTPGW*]", i);
+        } else {
+            printf("\n [Interface %d]", i);
+        }
+
         printf("\n - Driver: %s", devInfo.driver_name);
         printf("\n - If index: %d", devInfo.if_index);
         printf("\n - MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8

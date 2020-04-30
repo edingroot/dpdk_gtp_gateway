@@ -70,6 +70,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port, gtpv1_t *rx_gtp_hdr)
     rte_pktmbuf_adj(m, (uint16_t)outer_hdr_len);
 
     // Send to another port
+    // TODO: follow routing table
     uint16_t out_port = port ^ 1;
 
     // Prepend ethernet header
@@ -131,6 +132,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
             rte_pktmbuf_prepend(m, (uint16_t)outer_hdr_len);
 
     // Send to another port
+    // TODO: follow routing table
     // TODO: fix for the odd first port number
     uint16_t out_port = port ^ 1;
     interface_t *out_iface = port_iface_map[out_port];
@@ -206,7 +208,7 @@ gtpv1_set_header(gtpv1_t *gtp1_hdr, uint16_t payload_len, uint32_t teid)
      *    +--+--+--+--+--+--+--+--+
      *    |version |PT| 0| E| S|PN|
      *    +--+--+--+--+--+--+--+--+
-     *    0  0  1  1  0  0  0  0
+     *     0  0  1  1  0  0  0  0
      */
     gtp1_hdr->flags = 0x30; // v1, GTP-non-prime
     gtp1_hdr->type = GTP_TPDU;

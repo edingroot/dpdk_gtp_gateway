@@ -60,8 +60,11 @@ typedef struct confg_gtp_tunnel_s {
 
 typedef struct app_confg_s {
     uint8_t disp_stats;
+
     uint8_t gtp_port_count;
     confg_gtp_port_t gtp_ports[GTP_CFG_MAX_PORTS];
+    struct rte_hash *gtp_port_hash; // [port_num] = *gtp_port
+
     uint8_t gtp_tunnel_count;
     confg_gtp_tunnel_t gtp_tunnels[GTP_CFG_MAX_TUNNELS];
     struct rte_hash *teid_in_hash; // [teid_in] = *gtp_tunnel

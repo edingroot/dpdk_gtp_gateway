@@ -28,6 +28,25 @@ init_config_hash(int with_locks)
 {
     struct rte_hash_parameters params = {0};
 
+    // Initialize gtp_port_hash
+    params.name = "gtp_port_hash";
+    params.entries = GTP_CFG_MAX_PORTS;
+    params.key_len = sizeof(uint8_t);
+    params.hash_func = rte_jhash;
+    params.hash_func_init_val = 0;
+    params.socket_id = rte_socket_id();
+    if (with_locks) {
+        params.extra_flag =
+            RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+            | RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+    } else {
+        params.extra_flag = 0;
+    }
+
+    assert(rte_hash_find_existing(params.name) == NULL);
+    app_config.gtp_port_hash = rte_hash_create(&params);
+    assert((intptr_t)app_config.gtp_port_hash > 0);
+
     // Initialize teid_in_hash
     params.name = "teid_in_hash";
     params.entries = GTP_CFG_MAX_TUNNELS;
@@ -88,7 +107,7 @@ load_global_entries(struct rte_cfgfile *file)
                 break;
 
             default:
-                printf("\n ERROR: unexpected entry %s with value %s",
+                printf("\n ERROR: unexpected entry %s with value %s\n",
                         entries[j].name, entries[j].value);
                 fflush(stdout);
                 return -1;
@@ -111,28 +130,26 @@ load_intf_entries(struct rte_cfgfile *file, const char *section_name, int32_t in
     for (j = 0; j < ret; j++) {
         printf("\n %15s : %-15s", entries[j].name, entries[j].value);
 
-        switch (strlen(entries[j].name)) {
-            case 4:
-                if (STRCMP("ipv4", entries[j].name) == 0) {
-                    app_config.gtp_ports[intf_idx].ipv4 = inet_addr(entries[j].value);
-                } else if (STRCMP("type", entries[j].name) == 0) {
-                    app_config.gtp_ports[intf_idx].gtp_type =
-                        (STRCMP("GTPU", entries[j].value) == 0) ? CFG_VAL_GTPU : 0xff;
-                }
-                break;
-
-            // case 5:
-            //     if (STRCMP("index", entries[j].name) == 0)
-            //         app_config.gtp_ports[intf_idx].pkt_index = atoi(entries[j].value);
-            //     break;
-
-            default:
-                printf("\n ERROR: unexpected entry %s with value %s",
-                        entries[j].name, entries[j].value);
-                fflush(stdout);
-                return -1;
-        } /* update per entry */
+        if (STRCMP("ipv4", entries[j].name) == 0) {
+            app_config.gtp_ports[intf_idx].ipv4 = inet_addr(entries[j].value);
+        } else if (STRCMP("type", entries[j].name) == 0) {
+            app_config.gtp_ports[intf_idx].gtp_type =
+                (STRCMP("GTPU", entries[j].value) == 0) ? CFG_VAL_GTPU : 0xff;
+        // } else if (STRCMP("index", entries[j].name) == 0) {
+        //     app_config.gtp_ports[intf_idx].pkt_index = atoi(entries[j].value);
+        } else {
+            printf("\n ERROR: unexpected entry %s with value %s\n",
+                    entries[j].name, entries[j].value);
+            fflush(stdout);
+            return -1;
+        }
     } /* iterate entries */
+
+    // Add to hash
+    ret = rte_hash_add_key_data(app_config.gtp_port_hash,
+            &app_config.gtp_ports[intf_idx].port_num,
+            &app_config.gtp_ports[intf_idx]);
+    assert(ret == 0);
 
     return 0;
 }

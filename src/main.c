@@ -28,7 +28,8 @@ static __rte_always_inline int pkt_handler(void *arg);
 static __rte_always_inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port);
 
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
     int32_t i;
     int32_t ret;
 
@@ -81,9 +82,12 @@ main(int argc, char **argv) {
     }
 
     // Launch thread lcores
-    ret = rte_eth_dev_count_avail();
+    uint32_t lcore = rte_get_next_lcore(-1, 0, 0);
     for (i = 0; i < app_config.gtp_port_count; i++) {
-        rte_eal_remote_launch(pkt_handler, (void *)&app_config.gtp_ports[i].port_num, i + 1);
+        // Skip the first lcore
+        lcore = rte_get_next_lcore(lcore, 0, 0);
+        printf("Starting packet handler %d at lcore %d", i, lcore);
+        rte_eal_remote_launch(pkt_handler, (void *)&app_config.gtp_ports[i].port_num, lcore);
     }
 
     // Register signals
