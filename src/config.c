@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <sys/socket.h>
@@ -21,6 +22,18 @@ get_int(const char *string)
     }
 
     return atoi(string);
+}
+
+// "xx:xx:xx:xx:xx:xx" to unsigned char hw_addr[RTE_ETHER_ADDR_LEN]
+static inline void
+cvt_mac(const char *string, unsigned char *hw_addr)
+{
+    int i, idx = -3;
+
+    for (i = 0; i < 6; i++) {
+        idx += 3;
+        hw_addr[i] = (int)strtol(&string[idx], NULL, 16);
+    }
 }
 
 static void
@@ -194,8 +207,37 @@ load_tunnel_entries(struct rte_cfgfile *file, const char *section_name)
     return 0;
 }
 
+static int
+load_arp_entries(struct rte_cfgfile *file, const char *section_name)
+{
+    int32_t j = 0, idx, ret = -1;
+    struct rte_cfgfile_entry entries[32];
+    arp_entry_t *static_arp;
+
+    ret = rte_cfgfile_section_entries(file, section_name, entries, 32);
+    idx = get_int(section_name + strlen(GTP_CFG_TAG_ARP));
+    static_arp = &app_config.static_arps[idx];
+
+    for (j = 0; j < ret; j++) {
+        printf("\n %15s : %-15s", entries[j].name, entries[j].value);
+
+        if (STRCMP("ipv4", entries[j].name) == 0) {
+            static_arp->ipv4_addr = inet_addr(entries[j].value);
+        } else if (STRCMP("mac", entries[j].name) == 0) {
+            cvt_mac(entries[j].value, static_arp->mac_addr);
+        } else {
+            printf("\n ERROR: unexpected entry %s with value %s\n",
+                entries[j].name, entries[j].value);
+            fflush(stdout);
+            return -1;
+        }
+    } /* iterate entries */
+
+    return 0;
+}
+
 int32_t
-load_gtp_config(void)
+load_config(void)
 {
     struct rte_cfgfile *file = NULL;
     int32_t i = 0, intf_idx = 0, ret;
@@ -219,7 +261,11 @@ load_gtp_config(void)
     assert(tunnel_count <= GTP_CFG_MAX_TUNNELS);
     app_config.gtp_tunnel_count = tunnel_count;
 
-    const int32_t section_count = 1 + intf_count + tunnel_count; // "Global" + ...
+    int32_t arp_count = rte_cfgfile_num_sections(file, GTP_CFG_TAG_ARP, strlen(GTP_CFG_TAG_ARP));
+    assert(arp_count <= GTP_CFG_MAX_ARPS);
+    app_config.static_arp_count = arp_count;
+
+    const int32_t section_count = 1 + intf_count + tunnel_count + arp_count; // "Global" + ...
     section_names = malloc(section_count * sizeof(char *));
     for (i = 0; i < section_count; i++)
         section_names[i] = malloc(GTP_CFG_MAX_KEYLEN + 1);
@@ -238,6 +284,9 @@ load_gtp_config(void)
             assert(ret == 0);
         } else if (STRNCMP(GTP_CFG_TAG_TUNNEL, section_names[i], strlen(GTP_CFG_TAG_TUNNEL)) == 0) {
             ret = load_tunnel_entries(file, section_names[i]);
+            assert(ret == 0);
+        } else if (STRNCMP(GTP_CFG_TAG_ARP, section_names[i], strlen(GTP_CFG_TAG_ARP)) == 0) {
+            ret = load_arp_entries(file, section_names[i]);
             assert(ret == 0);
         }
     } /* per section */

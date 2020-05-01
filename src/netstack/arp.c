@@ -293,7 +293,14 @@ send_arp(struct rte_mbuf *mbuf, uint8_t port)
     }
 }
 
-// Performance critical
+/**
+ * <Performance critical>
+ *
+ * Sample code:
+ *   uint32_t ip = (192 << 24 | 168 << 16 | 0 << 1 | 2); // 192.168.0.1
+ *   unsigned char mac[6] = {0x3c, 0xfd, 0xfe, 0x7a, 0x6c, 0x29}; // 3c:fd:fe:7a:6c:29
+ *   add_mac(htonl(ip), mac);
+ */
 int
 get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
 {

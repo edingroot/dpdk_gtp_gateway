@@ -24,6 +24,8 @@
 #include <rte_udp.h>
 #include <rte_hash.h>
 
+#include "netstack/arp.h"
+
 /* DEFINES */
 #define GTP_CFG_FILE        "gtp_config.ini"
 #define GTP_CFG_MAX_KEYLEN  15
@@ -31,6 +33,8 @@
 #define GTP_CFG_MAX_PORTS   10
 #define GTP_CFG_TAG_TUNNEL  "TUNNEL_"
 #define GTP_CFG_MAX_TUNNELS 100
+#define GTP_CFG_TAG_ARP  "ARP_"
+#define GTP_CFG_MAX_ARPS 100
 
 #define GTP_MAX_NUMANODE    4
 #define GTP_MAX_LCORECOUNT  32
@@ -69,8 +73,11 @@ typedef struct app_confg_s {
     confg_gtp_tunnel_t gtp_tunnels[GTP_CFG_MAX_TUNNELS];
     struct rte_hash *teid_in_hash; // [teid_in] = *gtp_tunnel
     struct rte_hash *ue_ipv4_hash; // [ue_ipv4] = *gtp_tunnel
+
+    uint8_t static_arp_count;
+    arp_entry_t static_arps[GTP_CFG_MAX_ARPS];
 } app_confg_t;
 
-int32_t load_gtp_config(void);
+int32_t load_config(void);
 
 #endif /*__CONFIG_H__*/

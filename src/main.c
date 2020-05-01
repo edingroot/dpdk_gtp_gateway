@@ -24,6 +24,7 @@ extern numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 extern pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS];
 
 static int add_interfaces(void);
+static int add_static_arp(void);
 static __rte_always_inline int pkt_handler(void *arg);
 static __rte_always_inline void process_pkt_mbuf(struct rte_mbuf *m, uint8_t port);
 
@@ -50,7 +51,7 @@ main(int argc, char **argv)
     }
 
     // Load ini config file
-    ret = load_gtp_config();
+    ret = load_config();
     if (ret < 0) {
         printf("\n ERROR: failed to load config\n");
         return -1;
@@ -75,6 +76,10 @@ main(int argc, char **argv)
     ret = add_interfaces();
     assert(ret == 0);
 
+    // Add static arp
+    ret = add_static_arp();
+    assert(ret == 0);
+
     // Set interface options and queues
     if (node_interface_setup() < 0) {
         rte_panic("ERROR: interface setup Failed\n");
@@ -86,7 +91,7 @@ main(int argc, char **argv)
     for (i = 0; i < app_config.gtp_port_count; i++) {
         // Skip the first lcore
         lcore = rte_get_next_lcore(lcore, 0, 0);
-        printf("Starting packet handler %d at lcore %d", i, lcore);
+        // printf("Starting packet handler %d at lcore %d", i, lcore);
         rte_eal_remote_launch(pkt_handler, (void *)&app_config.gtp_ports[i].port_num, lcore);
     }
 
@@ -160,6 +165,22 @@ add_interfaces(void)
         memcpy(iface.hw_addr, addr.addr_bytes, sizeof(iface.hw_addr));
 
         add_interface(&iface);
+    }
+
+    return 0;
+}
+
+static int
+add_static_arp(void)
+{
+    int32_t i, ret;
+    arp_entry_t *arp_entry;
+
+    for (i = 0; i < app_config.static_arp_count; i++) {
+        arp_entry = &app_config.static_arps[i];
+        ret = add_mac(arp_entry->ipv4_addr, arp_entry->mac_addr);
+        if (ret != 0)
+            return -1;
     }
 
     return 0;
