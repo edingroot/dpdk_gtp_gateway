@@ -99,10 +99,9 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port, gtpv1_t *rx_gtp_hdr)
     printf_dbg(" [decap TX#%d]", out_port);
     ret = rte_eth_tx_burst(out_port, 0, &m, 1);
     if (likely(ret == 1)) {
-        // TODO: counter?
         return 1;
     } else {
-        printf(" ERR(rte_eth_tx_burst=%d) ", ret);
+        printf_dbg(" ERR(rte_eth_tx_burst=%d) ", ret);
         return 0;
     }
 }
@@ -196,7 +195,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
         port_pkt_stats[out_port].tx_gptu += 1;
         return 1;
     } else {
-        printf(" ERR(rte_eth_tx_burst=%d) ", ret);
+        printf_dbg(" ERR(rte_eth_tx_burst=%d) ", ret);
         return 0;
     }
 }

@@ -199,8 +199,16 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
             printf("  %-12lu ", port_pkt_stats[i].udpCsumErr);
 
             /*TX GTPU*/
-            printf("\033[30;%dH", (15 + 10 * i));
+            printf("\033[31;%dH", (15 + 10 * i));
             printf("  %-12lu ", port_pkt_stats[i].tx_gptu);
+
+            /*ENCAP ERR*/
+            printf("\033[32;%dH", (15 + 10 * i));
+            printf("  %-12lu ", port_pkt_stats[i].encap_err);
+
+            /*DECAP ERR*/
+            printf("\033[33;%dH", (15 + 10 * i));
+            printf("  %-12lu ", port_pkt_stats[i].decap_err);
         }
     }
 
@@ -310,9 +318,20 @@ show_static_display(void)
     printf("\033[28;1H");
     printf(MAGENTA " %-10s | " RESET, "UDP CSUM");
 
-    /*GTPU*/
     printf("\033[30;1H");
+    printf(CYAN " %-25s " RESET, "-------- GTP PROC STATS --------");
+
+    /*TX GTPU*/
+    printf("\033[31;1H");
     printf(BOLDRED " %-10s | ", "TX GTPU");
+
+    /*ENCAP ERR*/
+    printf("\033[32;1H");
+    printf(BOLDRED " %-10s | ", "ENCAP ERR");
+
+    /*DECAP ERR*/
+    printf("\033[33;1H");
+    printf(BOLDRED " %-10s | ", "DECAP ERR");
 
     /* fetch port info and display */
     for (i = 0; i < ports; i++) {

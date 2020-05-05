@@ -309,7 +309,8 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
                 if (likely(process_gtpv1(m, port, gtp1_hdr) > 0)) {
                     return;
                 } else {
-                    printf(" ERR(decap failed)\n");
+                    printf_dbg(" ERR(decap failed)\n");
+                    port_pkt_stats[port].decap_err += 1;
                     goto out_flush;
                 }
             } else {
@@ -323,7 +324,8 @@ process_pkt_mbuf(struct rte_mbuf *m, uint8_t port)
         if (likely(process_ipv4(m, port, ip_hdr) > 0)) {
             return;
         } else {
-            printf(" ERR(encap failed)\n");
+            printf_dbg(" ERR(encap failed)\n");
+            port_pkt_stats[port].encap_err += 1;
             goto out_flush;
         }
 

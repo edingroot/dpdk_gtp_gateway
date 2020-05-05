@@ -65,6 +65,8 @@ typedef struct pkt_stats_s {
     uint64_t rx_gptu_ipv4;
     uint64_t rx_gptu_ipv6;
     uint64_t tx_gptu;
+    uint64_t encap_err;
+    uint64_t decap_err;
 
     uint64_t non_ipv4;
     uint64_t non_udp;
@@ -86,9 +88,9 @@ typedef struct pkt_stats_s {
     uint64_t rxNoMbuff;
 } pkt_stats_t; /* per interface */
 
-void get_link_stats(__attribute__((unused)) struct rte_timer *t, 
+void get_link_stats(__attribute__((unused)) struct rte_timer *t,
                     __attribute__((unused)) void *arg);
-void get_process_stats(__attribute__((unused)) struct rte_timer *t, 
+void get_process_stats(__attribute__((unused)) struct rte_timer *t,
                        __attribute__((unused)) void *arg);
 
 void set_stats_timer(void);
