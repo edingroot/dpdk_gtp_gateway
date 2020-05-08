@@ -13,7 +13,11 @@ print_rte_ipv4(rte_be32_t addr4)
 }
 
 static __rte_always_inline void
-print_rte_ipv4_dbg(rte_be32_t addr4)
+print_rte_ipv4_dbg(
+#ifndef DEBUG
+    __attribute__((unused))
+#endif
+    rte_be32_t addr4)
 {
 #ifdef DEBUG
     print_rte_ipv4(addr4);
