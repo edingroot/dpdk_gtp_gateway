@@ -46,5 +46,5 @@ add_interface(interface_t *iface)
         printf("ERROR :: interface number more than max\n");
     }
 
-    add_mac(ptr->ipv4_addr, ptr->hw_addr);
+    arp_add_mac(ptr->ipv4_addr, ptr->hw_addr, 1);
 }

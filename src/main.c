@@ -178,7 +178,7 @@ add_static_arp(void)
 
     for (i = 0; i < app_config.static_arp_count; i++) {
         arp_entry = &app_config.static_arps[i];
-        ret = add_mac(arp_entry->ipv4_addr, arp_entry->mac_addr);
+        ret = arp_add_mac(arp_entry->ipv4_addr, arp_entry->mac_addr, 1);
         if (ret != 0)
             return -1;
     }

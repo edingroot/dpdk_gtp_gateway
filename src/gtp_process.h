@@ -82,7 +82,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port, gtpv1_t *rx_gtp_hdr)
         (const struct rte_ether_addr *)port_iface_map[out_port]->hw_addr,
         (struct rte_ether_addr *)eth_hdr->s_addr.addr_bytes);
 
-    ret = get_mac(inner_ip_hdr->dst_addr, eth_hdr->d_addr.addr_bytes);
+    ret = arp_get_mac(inner_ip_hdr->dst_addr, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
         printf(" ERR(Inner dst ip not found in arp table: ");
         print_rte_ipv4(inner_ip_hdr->dst_addr);
@@ -91,7 +91,7 @@ process_gtpv1(struct rte_mbuf *m, uint8_t port, gtpv1_t *rx_gtp_hdr)
         // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
-        send_arp_request(inner_ip_hdr->dst_addr, out_port);
+        arp_send_request(inner_ip_hdr->dst_addr, out_port);
         return 0;
     }
 
@@ -146,7 +146,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
         (const struct rte_ether_addr *)out_iface->hw_addr,
         (struct rte_ether_addr *)eth_hdr->s_addr.addr_bytes);
 
-    ret = get_mac(gtp_tunnel->ran_ipv4, eth_hdr->d_addr.addr_bytes);
+    ret = arp_get_mac(gtp_tunnel->ran_ipv4, eth_hdr->d_addr.addr_bytes);
     if (unlikely(ret != 1)) {
         printf(" ERR(Dst ip not found in arp table: ");
         print_rte_ipv4(gtp_tunnel->ran_ipv4);
@@ -155,7 +155,7 @@ process_ipv4(struct rte_mbuf *m, uint8_t port, struct rte_ipv4_hdr *rx_ip_hdr)
         // TODO: queue the packet and wait for arp reply instead of dropping it
         port_pkt_stats[port].dropped += 1;
 
-        send_arp_request(gtp_tunnel->ran_ipv4, out_port);
+        arp_send_request(gtp_tunnel->ran_ipv4, out_port);
         return 0;
     }
 
