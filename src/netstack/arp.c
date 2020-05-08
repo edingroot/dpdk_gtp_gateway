@@ -20,24 +20,19 @@ extern interface_t *iface_list;
 extern interface_t *port_iface_map[MAX_INTERFACES];
 
 /* GLOBALS */
-static struct rte_hash *arp_table = NULL; // [uint32_t ipv4_addr] = arp_entry
 static const char *arp_state_str[] = {"FREE", "PENDING", "RESOLVED", "PERMANENT"};
+static struct rte_hash *arp_table = NULL; // [uint32_t ipv4_addr] = *arp_entry
+static struct rte_hash *arp_pkt_egq; // pkt egress queue: [uint32_t ipv4_addr] = struct rte_ring;
 
-static __rte_always_inline int
-arp_send_reply_inplace(struct rte_mbuf *m, uint32_t src_ip_addr, struct arp *arp_hdr);
-
-static __rte_always_inline int
-arp_send(struct rte_mbuf *mbuf, uint8_t port);
-
-static __rte_always_inline int
-arp_add(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state);
-
-static __rte_always_inline int
-arp_update(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state);
+static __rte_always_inline int arp_send_reply_inplace(struct rte_mbuf *m, uint32_t src_ip_addr, struct arp *arp_hdr);
+static __rte_always_inline int arp_send(struct rte_mbuf *mbuf, uint8_t port);
+static __rte_always_inline int arp_add(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state);
+static __rte_always_inline int arp_update(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state);
 
 int
 arp_init(int with_locks)
 {
+    // Create arp table
     struct rte_hash_parameters params = {0};
 
     params.name = "arp_table";
@@ -58,7 +53,27 @@ arp_init(int with_locks)
     assert(rte_hash_find_existing(params.name) == NULL);
     arp_table = rte_hash_create(&params);
 
+    // TODO: Create arp_pkt_egq
+
     return (intptr_t)arp_table > 0 ? 0 : -1;
+}
+
+int
+arp_terminate(void)
+{
+    // TODO: Free egress pkt queue
+    
+    // Free the arp table
+    uint32_t *ipv4_addr, iter = 0;
+    arp_entry_t *arp_entry;
+
+    while (rte_hash_iterate(arp_table, (void *)&ipv4_addr, (void **)&arp_entry, &iter) >= 0) {
+        free(arp_entry);
+    }
+
+    rte_hash_free(arp_table);
+    logger(LOG_ARP, L_INFO, "ARP table freed.\n");
+    return 0;
 }
 
 int
@@ -364,6 +379,13 @@ arp_add(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state)
 
     int ret = rte_hash_add_key_data(arp_table, (const void *)&ipv4_addr, (void *)arp_entry);
     return ret == 0 ? 0 : -1;
+}
+
+int
+arp_queue_egress_pkt(uint32_t ipv4_addr, struct rte_mbuf *m)
+{
+    // TODO
+    return 0;
 }
 
 void

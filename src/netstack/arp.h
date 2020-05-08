@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_ether.h>
 #include <rte_hash.h>
+#include <rte_ring.h>
 
 #include "logger.h"
 
@@ -51,6 +52,7 @@ typedef struct arp_entry_s {
 } arp_entry_t;
 
 int arp_init(int with_locks);
+int arp_terminate(void);
 
 int arp_in(struct rte_mbuf *mbuf);
 int arp_send_request(uint32_t dst_ip_addr, uint8_t port);
@@ -75,8 +77,9 @@ int arp_get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
  */
 int arp_add_mac(uint32_t ipv4_addr, unsigned char *mac_addr, int permanent);
 
-void arp_print_table(TraceLevel trace_level);
+int arp_queue_egress_pkt(uint32_t ipv4_addr, struct rte_mbuf *m);
 
+void arp_print_table(TraceLevel trace_level);
 void print_ipv4(uint32_t ip_addr, TraceLevel trace_level);
 void print_mac(unsigned char *mac_addr, TraceLevel trace_level);
 

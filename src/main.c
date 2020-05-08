@@ -17,12 +17,14 @@
 #define PREFETCH_OFFSET 4
 
 /* GLOBALS */
+volatile uint8_t keep_running = 1;
 
 /* EXTERN */
 extern app_confg_t app_config;
 extern numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 extern pkt_stats_t port_pkt_stats[GTP_CFG_MAX_PORTS];
 
+static void sigint_handler(__attribute__((unused)) int signo);
 static int add_interfaces(void);
 static int add_static_arp(void);
 static __rte_always_inline int pkt_handler(void *arg);
@@ -96,8 +98,9 @@ main(int argc, char **argv)
     }
 
     // Register signals
-    signal(SIGUSR1, sigExtraStats);
-    signal(SIGUSR2, sigConfig);
+    signal(SIGINT, sigint_handler);
+    signal(SIGUSR1, sig_extra_stats);
+    signal(SIGUSR2, sig_config);
 
     // Show stats
     printf("\n DISP_STATS=%s\n", app_config.disp_stats ? "ON" : "OFF");
@@ -107,15 +110,25 @@ main(int argc, char **argv)
         show_static_display();
     }
 
-    do {
-        rte_delay_ms(1000);
+    while (keep_running) {
+        rte_delay_ms(500);
         if (app_config.disp_stats) {
             show_static_display();
         }
         rte_timer_manage();
-    } while (1);
-
+    }
+    
+    // Free resources
+    printf("\n\nCleaning...\n");
+    arp_terminate();
+    printf("Done.\n");
     return 0;
+}
+
+static void
+sigint_handler(__attribute__((unused)) int signo)
+{
+    keep_running = 0;
 }
 
 static int

@@ -13,7 +13,7 @@ extern app_confg_t app_config;
 extern numa_info_t numa_node_info[GTP_MAX_NUMANODE];
 
 void
-sigExtraStats(__attribute__((unused)) int signo)
+sig_extra_stats(__attribute__((unused)) int signo)
 {
     int32_t i = 0, ports = rte_eth_dev_count_avail();
 
@@ -72,7 +72,7 @@ sigExtraStats(__attribute__((unused)) int signo)
 }
 
 void
-sigConfig(__attribute__((unused)) int signo)
+sig_config(__attribute__((unused)) int signo)
 {
 }
 
@@ -369,10 +369,11 @@ set_stats_timer(void)
     rte_timer_init(&fetchStats);
     rte_timer_init(&displayStats);
 
-    /* periodic reload for every 1 sec for stats fetch and display */
+    /* periodic reload for every `period` sec for stats fetch and display */
     uint64_t hz = rte_get_timer_hz();
-    rte_timer_reset(&fetchStats, hz, PERIODICAL, lcoreId, get_link_stats, NULL);
-    rte_timer_reset(&displayStats, hz, PERIODICAL, lcoreId, get_process_stats, NULL);
+    double period = 0.5;
+    rte_timer_reset(&fetchStats, hz * period, PERIODICAL, lcoreId, get_link_stats, NULL);
+    rte_timer_reset(&displayStats, hz * period, PERIODICAL, lcoreId, get_process_stats, NULL);
 
     return;
 }

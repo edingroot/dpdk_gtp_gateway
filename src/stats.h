@@ -95,8 +95,8 @@ void get_process_stats(__attribute__((unused)) struct rte_timer *t,
 
 void set_stats_timer(void);
 void show_static_display(void);
-void sigExtraStats(int signo);
-void sigConfig(int signo);
+void sig_extra_stats(int signo);
+void sig_config(int signo);
 
 #endif /* __STATS_H__ */
 
