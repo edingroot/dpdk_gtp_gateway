@@ -30,6 +30,7 @@ typedef enum {
 typedef enum {
     ARP_STATE_ANY = 0,
     ARP_STATE_INCOMPLETE,
+    // states below are valid for arp_get_mac()
     ARP_STATE_REACHABLE,
     ARP_STATE_PERMANENT,
 } arp_state_t;

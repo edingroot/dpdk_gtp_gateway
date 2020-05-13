@@ -344,8 +344,8 @@ arp_get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
     arp_entry_t *arp_entry;
     int ret = rte_hash_lookup_data(arp_table, (const void *)&ipv4_addr, (void **)&arp_entry);
     
-    if (ret >= 0 && (arp_entry->state == ARP_STATE_REACHABLE || 
-                     arp_entry->state == ARP_STATE_PERMANENT)) {
+    // REACHABLE or PERMANENT
+    if (likely(ret >= 0 && arp_entry->state >= ARP_STATE_REACHABLE)) {
         rte_memcpy(mac_addr, arp_entry->mac_addr, RTE_ETHER_ADDR_LEN);
         // printf(": mac found ");
         // print_mac(mac_addr, L_ALL);
