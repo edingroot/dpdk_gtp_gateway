@@ -21,13 +21,13 @@ extern interface_t *port_iface_map[MAX_INTERFACES];
 
 /* GLOBALS */
 static const char *arp_state_str[] = {"FREE", "PENDING", "RESOLVED", "PERMANENT"};
-static struct rte_hash *arp_table = NULL; // [uint32_t ipv4_addr] = *arp_entry
-static struct rte_hash *arp_pkt_egq; // pkt egress queue: [uint32_t ipv4_addr] = struct rte_ring;
+static struct rte_hash *arp_table = NULL; // [uint32_t ipv4_addr] = (arp_entry_t *arp_entry)
+static struct rte_hash *arp_pkt_egqs; // pkt egress queues: [uint32_t ipv4_addr] = (struct rte_ring *pkt_egq)
 
 static __rte_always_inline int arp_send_reply_inplace(struct rte_mbuf *m, uint32_t src_ip_addr, struct arp *arp_hdr);
 static __rte_always_inline int arp_send(struct rte_mbuf *mbuf, uint8_t port);
 static __rte_always_inline int arp_add(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state);
-static __rte_always_inline int arp_update(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state);
+static __rte_always_inline int arp_update(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t prev_state, arp_state_t new_state);
 
 int
 arp_init(int with_locks)
@@ -41,32 +41,47 @@ arp_init(int with_locks)
     params.hash_func = rte_jhash;
     params.hash_func_init_val = 0;
     params.socket_id = rte_socket_id();
-
-    if (with_locks) {
-        params.extra_flag =
-            RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
-            | RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
-    } else {
-        params.extra_flag = 0;
-    }
+    params.extra_flag = with_locks ?
+        RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT |
+        RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY : 0;
 
     assert(rte_hash_find_existing(params.name) == NULL);
     arp_table = rte_hash_create(&params);
+    if ((intptr_t)arp_table <= 0) return -1;
 
-    // TODO: Create arp_pkt_egq
+    // Create arp_pkt_egqs
+    params.name = "arp_pkt_egqs";
+    params.entries = MAX_EGRESS_Q_IP_ENTRIES;
+    params.key_len = sizeof(uint32_t);
+    params.hash_func = rte_jhash;
+    params.hash_func_init_val = 0;
+    params.socket_id = rte_socket_id();
+    params.extra_flag = with_locks ?
+        RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT |
+        RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY : 0;
 
-    return (intptr_t)arp_table > 0 ? 0 : -1;
+    assert(rte_hash_find_existing(params.name) == NULL);
+    arp_pkt_egqs = rte_hash_create(&params);
+    if ((intptr_t)arp_pkt_egqs <= 0) return -1;
+
+    return 0;
 }
 
 int
 arp_terminate(void)
 {
-    // TODO: Free egress pkt queue
+    uint32_t *ipv4_addr, iter;
+    arp_entry_t *arp_entry;
+    struct rte_ring *pkt_egq;
+    
+    // Free egress pkt queue
+    iter = 0;
+    while (rte_hash_iterate(arp_pkt_egqs, (void *)&ipv4_addr, (void **)&pkt_egq, &iter) >= 0) {
+        rte_ring_free(pkt_egq);
+    }
     
     // Free the arp table
-    uint32_t *ipv4_addr, iter = 0;
-    arp_entry_t *arp_entry;
-
+    iter = 0;
     while (rte_hash_iterate(arp_table, (void *)&ipv4_addr, (void **)&arp_entry, &iter) >= 0) {
         free(arp_entry);
     }
@@ -130,7 +145,7 @@ arp_in(struct rte_mbuf *mbuf)
                 return -1;
             }
 
-            ret = arp_update(ip_addr_from, arp_hdr->src_hw_add, ARP_STATE_RESOLVED);
+            ret = arp_update(ip_addr_from, arp_hdr->src_hw_add, ARP_STATE_INCOMPLETE, ARP_STATE_REACHABLE);
             assert(ret == 0);
 
             arp_print_table(L_DEBUG);
@@ -182,7 +197,7 @@ arp_send_request(uint32_t dst_ip_addr, uint8_t port)
 
     int ret = arp_send(mbuf, iface->port);
     if (ret == 0) {
-        ret = arp_add(dst_ip_addr, NULL, ARP_STATE_PENDING);
+        ret = arp_add(dst_ip_addr, NULL, ARP_STATE_INCOMPLETE);
         return ret == 0 ? 0 : -1;
     } else {
         rte_pktmbuf_free(mbuf);
@@ -329,7 +344,7 @@ arp_get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
     arp_entry_t *arp_entry;
     int ret = rte_hash_lookup_data(arp_table, (const void *)&ipv4_addr, (void **)&arp_entry);
     
-    if (ret >= 0 && (arp_entry->state == ARP_STATE_RESOLVED || 
+    if (ret >= 0 && (arp_entry->state == ARP_STATE_REACHABLE || 
                      arp_entry->state == ARP_STATE_PERMANENT)) {
         rte_memcpy(mac_addr, arp_entry->mac_addr, RTE_ETHER_ADDR_LEN);
         // printf(": mac found ");
@@ -351,18 +366,19 @@ arp_add_mac(uint32_t ipv4_addr, unsigned char *mac_addr, int permanent)
     print_mac(mac_addr, L_INFO);
     logger_s(LOG_ARP, L_INFO, "\n");
 
-    return arp_add(ipv4_addr, mac_addr, permanent ? ARP_STATE_PERMANENT : ARP_STATE_RESOLVED);
+    return arp_add(ipv4_addr, mac_addr, permanent ? ARP_STATE_PERMANENT : ARP_STATE_REACHABLE);
 }
 
 static __rte_always_inline int
-arp_update(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state)
+arp_update(uint32_t ipv4_addr, unsigned char *mac_addr,
+           arp_state_t prev_state, arp_state_t new_state)
 {
     arp_entry_t *arp_entry;
     int ret = rte_hash_lookup_data(arp_table, (const void *)&ipv4_addr, (void **)&arp_entry);
     
-    if (ret >= 0) {
+    if (ret >= 0 && (arp_entry->state == prev_state || prev_state == ARP_STATE_ANY)) {
         rte_memcpy(mac_addr, arp_entry->mac_addr, RTE_ETHER_ADDR_LEN);
-        arp_entry->state = state;
+        arp_entry->state = new_state;
         return 0;
     } else {
         return -1;

@@ -13,6 +13,7 @@
 #include "logger.h"
 
 #define MAX_ARP_ENTRIES 8192
+#define MAX_EGRESS_Q_IP_ENTRIES 8192
 
 #define HW_TYPE_ETHERNET 1
 #define SW_TYPE_IPV4 0x0800
@@ -27,9 +28,9 @@ typedef enum {
 
 // See also arp_state_str[] in arp.c
 typedef enum {
-    ARP_STATE_FREE = 0,
-    ARP_STATE_PENDING,
-    ARP_STATE_RESOLVED,
+    ARP_STATE_ANY = 0,
+    ARP_STATE_INCOMPLETE,
+    ARP_STATE_REACHABLE,
     ARP_STATE_PERMANENT,
 } arp_state_t;
 
