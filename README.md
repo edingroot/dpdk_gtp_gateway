@@ -7,7 +7,11 @@ DPDK implementation of GTPv1 user plane gateway.
 - Packet statistics update on stdout
 - Node socket aware memory config
 
-# Build and run
+# Build and Run
+Environment
+- OS: Ubuntu 18.04 LTS
+- DPDK: 19.11.2 LTS
+
 Copy and edit config
 ```bash
 cp gtp_config.example.ini gtp_config.ini
