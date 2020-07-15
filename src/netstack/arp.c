@@ -391,7 +391,9 @@ arp_add(uint32_t ipv4_addr, unsigned char *mac_addr, arp_state_t state)
     arp_entry_t *arp_entry = malloc(sizeof(arp_entry_t));
     arp_entry->state = state;
     arp_entry->ipv4_addr = ipv4_addr;
-    rte_memcpy(arp_entry->mac_addr, mac_addr, RTE_ETHER_ADDR_LEN);
+    if (mac_addr) {
+        rte_memcpy(arp_entry->mac_addr, mac_addr, RTE_ETHER_ADDR_LEN);
+    }
 
     int ret = rte_hash_add_key_data(arp_table, (const void *)&ipv4_addr, (void *)arp_entry);
     return ret == 0 ? 0 : -1;
